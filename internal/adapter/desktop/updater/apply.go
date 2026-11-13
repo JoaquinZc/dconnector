@@ -56,7 +56,7 @@ func runApply(args []string, h hooks) int {
 	_ = os.MkdirAll(logDir, 0o755)
 	stamp := h.now().Format("20060102-150405")
 	logPath := filepath.Join(logDir, "update-"+stamp+".log")
-	var lw io.Writer = io.Discard
+	lw := io.Discard
 	if f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
 		defer f.Close()
 		lw = f
