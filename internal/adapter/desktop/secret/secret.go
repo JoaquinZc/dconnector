@@ -12,6 +12,3 @@ type Protector interface {
 	Protect(plain []byte) ([]byte, error)
 	Unprotect(blob []byte) ([]byte, error)
 }
-
-// entropy ata el cifrado a dConnector (otra aplicación del mismo usuario no lo abre por descuido).
-var entropy = []byte("dConnector.desktop.remote-password.v1")

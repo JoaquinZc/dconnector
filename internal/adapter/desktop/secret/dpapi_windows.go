@@ -10,6 +10,9 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// entropy ata el cifrado a dConnector (otra aplicación del mismo usuario no lo abre por descuido).
+var entropy = []byte("dConnector.desktop.remote-password.v1")
+
 type dpapi struct{}
 
 // Default devuelve el protector del sistema: DPAPI (CryptProtectData, ámbito del usuario actual).
