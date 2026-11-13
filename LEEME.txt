@@ -1,0 +1,15 @@
+﻿dConnector 0.3.0 · LÉEME
+
+Abre dConnector.exe para empezar (la versión portable no necesita instalación).
+Tus datos (cuentas, chats y ajustes) se guardan en %APPDATA%\dConnector si lo instalaste con el MSI, y en la carpeta .\data junto a dConnector.exe si usas la versión portable (la activa el archivo portable.txt).
+
+El servidor local (importante, en 5 líneas):
+1. Junto a dConnector.exe va dConnector-server.exe: es el servidor que mantiene tus cuentas y guarda los datos. No lo abras a mano.
+2. Al abrir dConnector se lanza solo, oculto, en tu propio equipo (127.0.0.1) y sin usuarios ni claves que gestionar.
+3. Al salir de dConnector («Salir» en la bandeja) se apaga, salvo que actives «Seguir en segundo plano» en Ajustes > Conexión.
+4. Si tienes un servidor dconnector-server en otra máquina, conéctalo en Ajustes > Conexión > Remoto (dirección https, usuario, clave y huella del certificado).
+5. Si dConnector avisa de que no encuentra dConnector-server, no muevas ni borres ese archivo de esta carpeta.
+
+dConnector usa WebView2, que Windows 10 y 11 ya traen instalado.
+Licencia: GNU AGPL-3.0. Los avisos de terceros están en LICENCIAS.txt; el texto de la licencia y el código fuente, en el repositorio del proyecto.
+Windows SmartScreen puede avisar la primera vez porque el programa no está firmado: «Más información» > «Ejecutar de todas formas».

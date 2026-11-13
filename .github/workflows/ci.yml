@@ -1,0 +1,273 @@
+# Integración continua de dConnector. Detalle y uso en docs/CI.md.
+# Versiones de acciones: tag mayor oficial (v4, v5) de las organizaciones actions/ y pnpm/; las
+# herramientas de Go y Node se fijan a versión exacta. No hay secretos: solo el GITHUB_TOKEN de solo lectura.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+# Un push nuevo a la misma rama o PR cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Versiones de herramientas (BITACORA.md). Go sale de go.mod (go-version-file).
+  STATICCHECK_VERSION: v0.8.2
+  WAILS_VERSION: v3.1.0
+  TASK_VERSION: v3.54.0
+  NODE_VERSION: '22'
+  PNPM_VERSION: '12.11.2'
+  GOFLAGS: -buildvcs=false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Linux x64 y arm64 NATIVOS: aquí se prueba de verdad el servidor en ambas arquitecturas.
+  # El escritorio (cmd/dconnector) y internal/adapter/ui/wails dependen de Wails, que en Linux exige
+  # CGO y GTK/WebKit: solo se compilan y prueban en el job de Windows. En Linux se limita la lista de
+  # paquetes con `go list` menos esas exclusiones (y el paquete frontend, que embebe dist/).
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Lista de paquetes que compilan en Linux
+        run: |
+          go list ./... \
+            | grep -v -e '/cmd/dconnector$' -e '/internal/adapter/ui/wails$' -e '/dconnector/frontend$' \
+            > "$RUNNER_TEMP/packages.txt"
+          echo "Paquetes: $(wc -l < "$RUNNER_TEMP/packages.txt")"
+
+      - name: gofmt
+        run: |
+          bad="$(gofmt -l cmd internal examples)"
+          if [ -n "$bad" ]; then
+            echo "Archivos sin formato (ejecute gofmt -w):"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet $(cat "$RUNNER_TEMP/packages.txt")
+
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}
+          "$(go env GOPATH)/bin/staticcheck" $(cat "$RUNNER_TEMP/packages.txt")
+
+      - name: go test
+        run: go test -timeout 10m $(cat "$RUNNER_TEMP/packages.txt")
+
+      - name: go test -race (servidor, API, autenticación y núcleo)
+        # En Linux hay gcc, así que el detector de carreras está disponible.
+        env:
+          CGO_ENABLED: '1'
+        run: go test -race -timeout 15m ./cmd/dconnector-server/... ./internal/server/... ./internal/adapter/api/... ./internal/core/...
+
+      - name: Compilar el servidor
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p "$RUNNER_TEMP/dc"
+          go build -trimpath \
+            -ldflags "-s -w -X dconnector/internal/buildinfo.Version=$(tr -d '[:space:]' < VERSION)" \
+            -o "$RUNNER_TEMP/dc/dconnector-server" ./cmd/dconnector-server
+          file "$RUNNER_TEMP/dc/dconnector-server" || true
+
+      - name: Servidor - versión, selftest y prueba E2E con healthcheck (carpetas temporales)
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/dc/dconnector-server"
+          want="$(tr -d '[:space:]' < VERSION)"
+          got="$("$bin" --version)"
+          echo "--version -> $got (VERSION: $want)"
+          [ "$got" = "$want" ]
+
+          work="$(mktemp -d)"
+          "$bin" --selftest --data "$work/selftest"
+
+          # E2E: arranque real en loopback (TLS propio por defecto), healthcheck y parada limpia.
+          addr="127.0.0.1:18443"
+          export DCONNECTOR_DATA="$work/e2e"
+          "$bin" --listen "$addr" > "$work/server.log" 2>&1 &
+          pid=$!
+          ok=0
+          for _ in $(seq 1 40); do
+            if "$bin" --listen "$addr" healthcheck; then ok=1; break; fi
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          if [ "$ok" != 1 ]; then
+            echo "El servidor no respondió al healthcheck. Registro:"
+            cat "$work/server.log"
+            kill "$pid" 2>/dev/null || true
+            exit 1
+          fi
+          kill -TERM "$pid"
+          set +e
+          wait "$pid"
+          code=$?
+          set -e
+          echo "El servidor terminó con código $code tras SIGTERM"
+          [ "$code" = 0 ] || echo "::warning::El servidor no salió con código 0 tras SIGTERM ($code)"
+
+  # ---------------------------------------------------------------------------
+  # Imagen Docker: se construye y se espera a que su HEALTHCHECK quede «healthy». No se publica.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Imagen Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Construir
+        run: |
+          docker build -f deploy/Dockerfile \
+            --build-arg VERSION="$(tr -d '[:space:]' < VERSION)" \
+            -t dconnector-server:ci .
+      - name: Arrancar y esperar el healthcheck
+        run: |
+          set -euo pipefail
+          docker run -d --name dc-ci dconnector-server:ci
+          status=starting
+          for _ in $(seq 1 30); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' dc-ci)"
+            [ "$status" = healthy ] && break
+            sleep 5
+          done
+          echo "Estado: $status"
+          if [ "$status" != healthy ]; then
+            docker logs dc-ci || true
+            exit 1
+          fi
+          docker rm -f dc-ci
+
+  # ---------------------------------------------------------------------------
+  # Windows x64: escritorio completo (Wails + interfaz) y servidor.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # pnpm antes que setup-node para que la caché de pnpm funcione.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Instalar wails3, task y staticcheck (versiones fijas)
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true   # un comando nativo que falla detiene el paso
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$env:WAILS_VERSION"
+          go install "github.com/go-task/task/v3/cmd/task@$env:TASK_VERSION"
+          go install "honnef.co/go/tools/cmd/staticcheck@$env:STATICCHECK_VERSION"
+          Join-Path (go env GOPATH) 'bin' | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: staticcheck (todos los paquetes)
+        # `bindings` genera frontend/bindings, que el paquete del escritorio importa.
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          task bindings
+          staticcheck ./...
+
+      # task gate = go vet + go test + tsc + vitest + build (-tags production) + --version + --selftest.
+      - name: task gate
+        run: task gate
+
+      - name: Escritorio con el servidor al lado - --selftest --require-server
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          go build -trimpath -ldflags "-s -w -X dconnector/internal/buildinfo.Version=$((Get-Content VERSION -Raw).Trim())" -o bin/dConnector-server.exe ./cmd/dconnector-server
+          $out = Join-Path $env:RUNNER_TEMP 'selftest-require-server.txt'
+          $env:DCONNECTOR_DATA = Join-Path $env:RUNNER_TEMP 'dc-data'
+          $p = Start-Process -FilePath bin/dConnector.exe -ArgumentList '--selftest', '--require-server', '--out', "`"$out`"" -Wait -PassThru -WindowStyle Hidden
+          $text = if (Test-Path $out) { Get-Content $out -Raw } else { '' }
+          Write-Host $text
+          if ($p.ExitCode -ne 0 -or $text -notmatch '(?m)^OK') { throw "selftest --require-server falló (código $($p.ExitCode))" }
+
+  # ---------------------------------------------------------------------------
+  # Windows arm64 NATIVO. `windows-11-arm` es un runner estándar gratuito de repositorios públicos.
+  # Es reciente, así que no bloquea la integración (continue-on-error) y solo cubre lo que no necesita
+  # la cadena del escritorio: pruebas de los paquetes sin Wails y servidor con su selftest.
+  # ---------------------------------------------------------------------------
+  windows-arm64:
+    name: Windows arm64 (servidor)
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go vet y go test (sin el escritorio de Wails)
+        run: |
+          $pk = go list ./... | Where-Object { $_ -notmatch '/cmd/dconnector$' -and $_ -notmatch '/internal/adapter/ui/wails$' -and $_ -notmatch '/dconnector/frontend$' }
+          go vet $pk
+          if ($LASTEXITCODE -ne 0) { throw 'go vet falló' }
+          go test -timeout 15m $pk
+          if ($LASTEXITCODE -ne 0) { throw 'go test falló' }
+
+      - name: Servidor arm64 - versión y selftest
+        run: |
+          $want = (Get-Content VERSION -Raw).Trim()
+          go build -trimpath -ldflags "-s -w -X dconnector/internal/buildinfo.Version=$want" -o dconnector-server.exe ./cmd/dconnector-server
+          if ($LASTEXITCODE -ne 0) { throw 'build falló' }
+          $got = (& ./dconnector-server.exe --version).Trim()
+          Write-Host "--version -> $got (VERSION: $want)"
+          if ($got -ne $want) { throw 'la versión no coincide con VERSION' }
+          $data = Join-Path $env:RUNNER_TEMP 'dc-selftest'
+          & ./dconnector-server.exe --selftest --data $data
+          if ($LASTEXITCODE -ne 0) { throw 'selftest falló' }

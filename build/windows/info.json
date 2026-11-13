@@ -1,0 +1,17 @@
+{
+	"fixed": {
+		"file_version": "0.3.0",
+		"product_version": "0.3.0"
+	},
+	"info": {
+		"0409": {
+			"FileVersion": "0.3.0",
+			"ProductVersion": "0.3.0",
+			"CompanyName": "Darkmelon",
+			"FileDescription": "dConnector",
+			"LegalCopyright": "(c) 2026 Darkmelon",
+			"ProductName": "dConnector",
+			"Comments": "Bandeja unificada de WhatsApp, Telegram, Messenger e Instagram"
+		}
+	}
+}

@@ -1,0 +1,44 @@
+# Ejemplo para dconnector-server. Copie a docker-compose.yml, ajuste y ejecute:  docker compose up -d
+# Construir desde la raíz del repositorio (el contexto es «..»):  docker compose build
+services:
+  dconnector:
+    image: dconnector-server:0.3.0
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSION: "0.3.0"
+    container_name: dconnector
+    restart: unless-stopped
+    ports:
+      # Publique solo en la interfaz que necesite. Con 127.0.0.1 solo accede esta máquina (p. ej. detrás de un proxy).
+      - "8443:8443"
+    environment:
+      TZ: America/Guayaquil
+      DCONNECTOR_LISTEN: "0.0.0.0:8443"
+      DCONNECTOR_DATA: /data
+      DCONNECTOR_ADMIN_USER: admin
+      # Clave del administrador del primer arranque. Si no se define, se genera una y se imprime UNA vez
+      # (docker compose logs dconnector). Mínimo 12 caracteres.
+      # DCONNECTOR_ADMIN_PASSWORD: "cambie-esta-clave-larga"
+      # Certificado propio (por defecto, autogenerado en /data/tls con huella al arrancar). Para uno externo:
+      # DCONNECTOR_TLS_CERT: /certs/fullchain.pem
+      # DCONNECTOR_TLS_KEY: /certs/privkey.pem
+      # Detrás de un proxy inverso que ya pone TLS (red interna de confianza):
+      # DCONNECTOR_NO_TLS: "true"
+      # DCONNECTOR_INSECURE: "true"
+      # DCONNECTOR_ALLOW_ORIGIN: "https://panel.ejemplo.com"
+      # DCONNECTOR_VERBOSE: "false"
+    volumes:
+      - dconnector-data:/data
+      # - ./certs:/certs:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+
+volumes:
+  dconnector-data:

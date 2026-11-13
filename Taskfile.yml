@@ -1,0 +1,241 @@
+version: '3'
+
+# dConnector · tareas (docs/12-EMPAQUETADO.md). Wails v3 usa Task.
+# Requiere en el PATH: go y task. Para el escritorio de Windows además wails3, pnpm y node; para `msi`, wix 5.0.2
+# (con WixToolset.UI.wixext y WixToolset.Util.wixext) y Windows PowerShell 5.1.
+# `release:linux`, `checksums`, `build:server`, `package:server`, `package:echo` y `docker` solo usan go (y docker):
+# funcionan igual en un runner Linux. Se puede cambiar la versión con `task release VERSION=0.3.0-prueba`.
+
+vars:
+  VERSION:
+    sh: go run scripts/dist.go version
+  # Marcas comunes: reproducible (sin rutas, sin VCS, sin build id) y con la versión.
+  LDFLAGS: '-s -w -buildid= -X dconnector/internal/buildinfo.Version={{.VERSION}}'
+  PS: powershell -NoProfile -ExecutionPolicy Bypass -File
+  # Arquitecturas del escritorio que recorren msi:all, portable:all y release:windows. x86 NO va por defecto: el escritorio de
+  # Wails v3.1.0 compila para windows/386 pero entra en pánico al arrancar (combridge/NewCallback, solo 64 bits).
+  # Para incluirla: task release DESKTOP_ARCHS="x64 x86 arm64" (su comprobación de ejecución fallará mientras Wails no lo arregle).
+  DESKTOP_ARCHS: x64 arm64
+
+env:
+  CGO_ENABLED: '0'
+
+tasks:
+  default:
+    cmds:
+      - task: build
+
+  # ---------------------------------------------------------------- interfaz
+  bindings:
+    desc: Genera los enlaces TypeScript de los servicios de Wails
+    run: once
+    cmds:
+      - wails3 generate bindings -clean=true -ts -i ./cmd/dconnector
+
+  frontend:
+    desc: Instala dependencias y compila la interfaz (incluye tsc y vitest)
+    run: once
+    deps: [bindings]
+    cmds:
+      - pnpm -C frontend install --frozen-lockfile
+      - pnpm -C frontend build
+
+  # ---------------------------------------------------------------- compilación
+  build:desktop:
+    desc: 'Escritorio de Windows de una arquitectura: bin/windows-<ARCH>/dConnector.exe (ARCH=x86|x64|arm64, por defecto x64)'
+    run: when_changed
+    deps: [frontend]
+    vars:
+      A: '{{default "x64" .ARCH}}'
+      SYSO: '{{if eq (default "x64" .ARCH) "x86"}}386{{else if eq (default "x64" .ARCH) "arm64"}}arm64{{else}}amd64{{end}}'
+    cmds:
+      - go run scripts/dist.go mkdir bin/windows-{{.A}} bin/obj
+      - '{{.PS}} scripts/info.ps1 -Version {{.VERSION}}'
+      - wails3 generate syso -arch {{.SYSO}} -icon build/windows/icon.ico -manifest build/windows/wails.exe.manifest -info bin/obj/info.json -out cmd/dconnector/wails_windows_{{.SYSO}}.syso
+      - GOOS=windows GOARCH={{.SYSO}} go build -tags production -trimpath -buildvcs=false -ldflags "-H windowsgui {{.LDFLAGS}}" -o bin/windows-{{.A}}/dConnector.exe ./cmd/dconnector
+    # El .syso solo existe mientras se compila (está en .gitignore).
+    defer: go run scripts/dist.go rm "cmd/dconnector/*.syso"
+
+  build:server:
+    desc: 'Servidor de una plataforma: bin/server/<GOOS>-<GOARCH>/ (GOOS=windows|linux, GOARCH=amd64|arm64|386)'
+    run: when_changed
+    vars:
+      OS: '{{default "windows" .GOOS}}'
+      AR: '{{default "amd64" .GOARCH}}'
+      NAME: '{{if eq (default "windows" .GOOS) "windows"}}dConnector-server.exe{{else}}dconnector-server{{end}}'
+    cmds:
+      - go run scripts/dist.go mkdir bin/server/{{.OS}}-{{.AR}}
+      - GOOS={{.OS}} GOARCH={{.AR}} go build -trimpath -buildvcs=false -ldflags "{{.LDFLAGS}}" -o bin/server/{{.OS}}-{{.AR}}/{{.NAME}} ./cmd/dconnector-server
+
+  build:echo:
+    desc: 'echo-server de una plataforma: bin/echo/<GOOS>-<GOARCH>/ (GOOS=windows|linux, GOARCH=amd64|arm64)'
+    run: when_changed
+    vars:
+      OS: '{{default "windows" .GOOS}}'
+      AR: '{{default "amd64" .GOARCH}}'
+      NAME: '{{if eq (default "windows" .GOOS) "windows"}}echo-server.exe{{else}}echo-server{{end}}'
+    cmds:
+      - go run scripts/dist.go mkdir bin/echo/{{.OS}}-{{.AR}}
+      - GOOS={{.OS}} GOARCH={{.AR}} go build -trimpath -buildvcs=false -ldflags "-s -w -buildid=" -o bin/echo/{{.OS}}-{{.AR}}/{{.NAME}} ./examples/echo-server
+
+  build:
+    desc: Desarrollo - bin/dConnector.exe (x64) y bin/dConnector-server.exe juntos, para probar el modo local
+    cmds:
+      - task: build:desktop
+        vars: {ARCH: x64}
+      - task: build:server
+        vars: {GOOS: windows, GOARCH: amd64}
+      - go run scripts/dist.go cp bin/windows-x64/dConnector.exe bin/dConnector.exe
+      - go run scripts/dist.go cp bin/server/windows-amd64/dConnector-server.exe bin/dConnector-server.exe
+
+  # ---------------------------------------------------------------- comprobaciones
+  version:
+    desc: Imprime la versión del ejecutable compilado
+    cmds:
+      - '{{.PS}} scripts/version.ps1 -Exe bin/dConnector.exe'
+
+  test:
+    desc: gofmt, go vet, pruebas de Go y de la interfaz (tsc y vitest)
+    cmds:
+      - go run scripts/dist.go gofmt
+      - go vet ./...
+      - go test ./...
+      - pnpm -C frontend exec tsc --noEmit
+      - pnpm -C frontend exec vitest run
+
+  selftest:
+    desc: Prueba automática del ejecutable de bin/ con su servidor (datos en una carpeta temporal)
+    cmds:
+      - '{{.PS}} scripts/selftest.ps1 -Exe bin/dConnector.exe -RequireServer'
+
+  check:build:
+    internal: true
+    vars:
+      EXTRA: '{{if eq .PKG "./cmd/dconnector"}}-tags production{{end}}'
+    cmds:
+      - GOOS={{.OS}} GOARCH={{.AR}} go build {{.EXTRA}} -trimpath -buildvcs=false -o bin/check/{{.OS}}-{{.AR}}-{{base .PKG}}.out {{.PKG}}
+
+  check:cross:
+    desc: Compila (sin guardar) servidor y escritorio para todas las plataformas de la versión
+    cmds:
+      - for: [linux/amd64, linux/arm64, windows/386, windows/amd64, windows/arm64]
+        task: check:build
+        vars: {OS: '{{index (splitList "/" .ITEM) 0}}', AR: '{{index (splitList "/" .ITEM) 1}}', PKG: ./cmd/dconnector-server}
+      - for: [windows/386, windows/amd64, windows/arm64]
+        task: check:build
+        vars: {OS: '{{index (splitList "/" .ITEM) 0}}', AR: '{{index (splitList "/" .ITEM) 1}}', PKG: ./cmd/dconnector}
+    defer: go run scripts/dist.go rm bin/check
+
+  gate:
+    desc: Puerta de cada oleada (docs/13-OLEADAS.md); deja bin/dConnector.exe y bin/dConnector-server.exe
+    cmds:
+      - task: test
+      - task: build
+      - task: version
+      - task: selftest
+      - task: check:cross
+
+  # ---------------------------------------------------------------- paquetes de escritorio (solo Windows)
+  portable:
+    desc: 'Zip portable de una arquitectura en dist/ (ARCH=x86|x64|arm64, por defecto x64), con su comprobación'
+    cmds:
+      - task: build:desktop
+        vars: {ARCH: '{{default "x64" .ARCH}}'}
+      - task: build:server
+        vars: {GOOS: windows, GOARCH: '{{if eq (default "x64" .ARCH) "x86"}}386{{else if eq (default "x64" .ARCH) "arm64"}}arm64{{else}}amd64{{end}}'}
+      - '{{.PS}} scripts/portable.ps1 -Arch {{default "x64" .ARCH}} -Version {{.VERSION}}'
+
+  portable:all:
+    desc: Zips portables de las arquitecturas de DESKTOP_ARCHS (x64 y arm64 por defecto)
+    cmds:
+      - for: {var: DESKTOP_ARCHS}
+        task: portable
+        vars: {ARCH: '{{.ITEM}}'}
+
+  msi:
+    desc: 'MSI por usuario de una arquitectura en dist/ (ARCH=x86|x64|arm64, por defecto x64), con su comprobación (requiere wix 5.0.2)'
+    cmds:
+      - task: build:desktop
+        vars: {ARCH: '{{default "x64" .ARCH}}'}
+      - task: build:server
+        vars: {GOOS: windows, GOARCH: '{{if eq (default "x64" .ARCH) "x86"}}386{{else if eq (default "x64" .ARCH) "arm64"}}arm64{{else}}amd64{{end}}'}
+      - '{{.PS}} scripts/msi.ps1 -Arch {{default "x64" .ARCH}} -Version {{.VERSION}}'
+
+  msi:all:
+    desc: MSI de las arquitecturas de DESKTOP_ARCHS (x64 y arm64 por defecto)
+    cmds:
+      - for: {var: DESKTOP_ARCHS}
+        task: msi
+        vars: {ARCH: '{{.ITEM}}'}
+
+  # ---------------------------------------------------------------- paquetes del servidor y del echo-server (solo go)
+  package:server:
+    desc: 'Servidor empaquetado en dist/ (zip en Windows, tar.gz en Linux): GOOS y GOARCH (amd64|arm64)'
+    cmds:
+      - task: build:server
+        vars: {GOOS: '{{.GOOS}}', GOARCH: '{{.GOARCH}}'}
+      - go run scripts/dist.go server -os {{.GOOS}} -arch {{.GOARCH}} -version {{.VERSION}}
+
+  package:echo:
+    desc: 'echo-server en dist/ (zip en Windows, tar.gz en Linux; con las licencias): GOOS y GOARCH (amd64|arm64)'
+    cmds:
+      - task: build:echo
+        vars: {GOOS: '{{.GOOS}}', GOARCH: '{{.GOARCH}}'}
+      - go run scripts/dist.go echo -os {{.GOOS}} -arch {{.GOARCH}} -version {{.VERSION}}
+
+  echo-server:
+    desc: echo-server de Windows x64 en dist/ (atajo de package:echo)
+    cmds:
+      - task: package:echo
+        vars: {GOOS: windows, GOARCH: amd64}
+
+  # ---------------------------------------------------------------- lanzamiento
+  release:windows:
+    desc: Windows - escritorio x86/x64/arm64 (MSI y zip), servidor x64/arm64 (zip) y echo-server x64/arm64 (zip)
+    cmds:
+      - task: msi:all
+      - task: portable:all
+      - for: [amd64, arm64]
+        task: package:server
+        vars: {GOOS: windows, GOARCH: '{{.ITEM}}'}
+      - for: [amd64, arm64]
+        task: package:echo
+        vars: {GOOS: windows, GOARCH: '{{.ITEM}}'}
+
+  release:linux:
+    desc: Linux - servidor y echo-server x64/arm64 (tar.gz). Solo necesita go y task (sirve en un runner Linux)
+    cmds:
+      - for: [amd64, arm64]
+        task: package:server
+        vars: {GOOS: linux, GOARCH: '{{.ITEM}}'}
+      - for: [amd64, arm64]
+        task: package:echo
+        vars: {GOOS: linux, GOARCH: '{{.ITEM}}'}
+
+  checksums:
+    desc: Escribe dist/SHA256SUMS con los artefactos de esta versión y lo verifica (solo go)
+    cmds:
+      - go run scripts/dist.go sums -version {{.VERSION}}
+
+  docker:
+    desc: Construye la imagen deploy/Dockerfile y la arranca con su healthcheck (sin Docker avisa y sale con 0; no publica)
+    cmds:
+      - go run scripts/dist.go docker -version {{.VERSION}}
+
+  clean-dist:
+    desc: Borra dist/
+    cmds:
+      - go run scripts/dist.go rm dist
+
+  release:
+    desc: TODO en dist/ - release:windows + release:linux + checksums (desde cero)
+    cmds:
+      - task: clean-dist
+      - task: release:windows
+      - task: release:linux
+      - task: checksums
+
+  licencias:
+    desc: Regenera LICENCIAS.txt desde los módulos reales (solo cuando cambian las dependencias)
+    cmds:
+      - '{{.PS}} scripts/licencias.ps1'

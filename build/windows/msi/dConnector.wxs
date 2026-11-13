@@ -1,0 +1,63 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <!-- Un MSI por arquitectura (wix build -arch x86|x64|arm64). Mismo UpgradeCode en las tres: actualiza encima de 0.2.x.
+       Variables (-d): Version (a.b.c), ExePath, ServerExePath, IconPath, LicenseRtf, LicensesTxt, LeemeTxt, ComponentGuid
+       (distinto por arquitectura) y, si existen, LicenseTxt y ThirdPartyTxt. -->
+  <Package Name="dConnector" Manufacturer="Darkmelon" Version="$(var.Version)"
+           UpgradeCode="637254E9-11AA-4BEB-A2EE-BDB33F6347EA"
+           Scope="perUser" Language="3082" Compressed="yes">
+    <!-- afterInstallExecute: la versión anterior se quita DESPUÉS de cerrar la aplicación y el servidor (CloseApplication corre antes de copiar archivos);
+         con el horario por defecto se quitaría antes, con el servidor aún en marcha. El componente (mismo GUID) conserva sus archivos. -->
+    <MajorUpgrade Schedule="afterInstallExecute" DowngradeErrorMessage="Ya está instalada una versión más nueva de dConnector." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Mismo UpgradeCode en las tres arquitecturas: el MSI x86 (el escritorio de 32 bits no arranca con Wails v3.1.0) no debe instalarse
+         en un Windows de 64 bits, donde reemplazaría a un x64 de una versión anterior. -->
+    <?if $(sys.BUILDARCH) = x86?>
+    <Launch Condition="Installed OR NOT VersionNT64" Message="Este instalador es de 32 bits. En Windows de 64 bits use el instalador x64 o arm64 de dConnector." />
+    <?endif?>
+
+    <!-- Antes de reemplazar o quitar archivos se cierra la aplicación y se termina el servidor local por nombre
+         (RestartManager/CloseApplication: por usuario no se puede parar un servicio de Windows). Los datos no se tocan. -->
+    <util:CloseApplication Id="CloseDesktop" Target="dConnector.exe" CloseMessage="yes" RebootPrompt="no" TerminateProcess="0" Timeout="5" Sequence="1" />
+    <util:CloseApplication Id="CloseServer" Target="dConnector-server.exe" RebootPrompt="no" TerminateProcess="0" Timeout="3" Sequence="2" />
+
+    <Icon Id="AppIcon" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <!-- ARPNOMODIFY=1 ya lo define WixUI_Minimal (WiX 5.0.2 rechaza declararlo dos veces: WIX0091). -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <ui:WixUI Id="WixUI_Minimal" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="dConnector" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component Id="MainExe" Guid="$(var.ComponentGuid)">
+        <File Id="dConnectorExe" Source="$(var.ExePath)" KeyPath="no" />
+        <File Id="dConnectorServerExe" Name="dConnector-server.exe" Source="$(var.ServerExePath)" KeyPath="no" />
+        <File Id="LicensesTxt" Name="LICENCIAS.txt" Source="$(var.LicensesTxt)" KeyPath="no" />
+        <File Id="LeemeTxt" Name="LEEME.txt" Source="$(var.LeemeTxt)" KeyPath="no" />
+        <?ifdef LicenseTxt?>
+        <File Id="LicenseFile" Name="LICENSE" Source="$(var.LicenseTxt)" KeyPath="no" />
+        <?endif?>
+        <?ifdef ThirdPartyTxt?>
+        <File Id="ThirdPartyFile" Name="THIRD-PARTY-NOTICES" Source="$(var.ThirdPartyTxt)" KeyPath="no" />
+        <?endif?>
+        <RegistryValue Root="HKCU" Key="Software\Darkmelon\dConnector" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="dConnector"
+                  Target="[#dConnectorExe]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="dConnector"
+                  Target="[#dConnectorExe]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="dConnector" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+    </Feature>
+  </Package>
+</Wix>

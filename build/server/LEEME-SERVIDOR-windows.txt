@@ -1,0 +1,24 @@
+dConnector servidor @VERSION@ (Windows)
+
+Arranque rápido
+  1. Abra una consola en esta carpeta y ejecute:  dConnector-server.exe
+  2. Escucha en 127.0.0.1:8443 con TLS. Para atender a otros equipos use --listen 0.0.0.0:8443
+     (fuera de loopback exige TLS; no desactive la seguridad con --insecure salvo detrás de un proxy).
+  3. Los datos van a %APPDATA%\dConnector; otra carpeta con --data C:\ruta.
+
+Primer arranque
+  Se crea el administrador (usuario "admin", o el de --admin-user). Si no fija la clave con la variable
+  DCONNECTOR_ADMIN_PASSWORD (12 caracteres o más), se genera una y se imprime UNA sola vez en la consola:
+  guárdela. Sin certificado propio se genera uno autofirmado en <datos>\tls y se imprime su huella.
+
+TLS
+  Con un certificado propio:  --tls-cert fullchain.pem --tls-key privkey.pem
+  Sin TLS solo en loopback o detrás de un proxy inverso:  --no-tls
+
+Servicio de Windows (como administrador)
+  dConnector-server.exe --service install --listen 0.0.0.0:8443 --data C:\ProgramData\dConnector
+  dConnector-server.exe --service start     (también stop y uninstall)
+
+Usuarios:  dConnector-server.exe user ...        Versión:  dConnector-server.exe --version
+Referencia del protocolo y de la API: docs/14-API-SERVIDOR.md del repositorio.
+Licencias: LICENCIAS.txt (y LICENSE / THIRD-PARTY-NOTICES si vienen en el paquete).

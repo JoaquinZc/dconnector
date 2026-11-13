@@ -1,0 +1,26 @@
+dConnector servidor @VERSION@ (Linux)
+
+Arranque rápido
+  ./dconnector-server --listen 0.0.0.0:8443 --data ./datos
+  Por defecto escucha en 127.0.0.1:8443 con TLS. Fuera de loopback exige TLS.
+
+Instalación con systemd (como root; los mismos pasos van al principio de dconnector.service)
+  useradd --system --home-dir /var/lib/dconnector --shell /usr/sbin/nologin dconnector
+  install -m 0755 dconnector-server /usr/local/bin/dconnector-server
+  install -d -m 0750 -o root -g dconnector /etc/dconnector
+  install -m 0640 -o root -g dconnector dconnector.env.example /etc/dconnector/dconnector.env
+  install -m 0644 dconnector.service /etc/systemd/system/dconnector.service
+  systemctl daemon-reload && systemctl enable --now dconnector
+
+Primer arranque
+  Se crea el administrador (usuario "admin"). Si no fija DCONNECTOR_ADMIN_PASSWORD (12 caracteres o más)
+  en /etc/dconnector/dconnector.env, se genera una clave y sale UNA sola vez:  journalctl -u dconnector | head
+  Sin certificado propio se genera uno autofirmado en <datos>/tls y se imprime su huella.
+
+TLS
+  Certificado propio:  DCONNECTOR_TLS_CERT y DCONNECTOR_TLS_KEY (o --tls-cert y --tls-key); se recarga con
+  systemctl reload dconnector. Sin TLS solo en loopback o tras un proxy inverso (--no-tls).
+
+Usuarios:  dconnector-server user ...        Versión:  dconnector-server --version
+Referencia del protocolo y de la API: docs/14-API-SERVIDOR.md del repositorio.
+Licencias: LICENCIAS.txt (y LICENSE / THIRD-PARTY-NOTICES si vienen en el paquete).

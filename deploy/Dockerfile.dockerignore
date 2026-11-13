@@ -1,0 +1,18 @@
+# Contexto de construcción mínimo (se aplica al construir con -f deploy/Dockerfile desde la raíz).
+# Fuera: historial, dependencias de la interfaz, salidas de compilación y archivos de entorno o datos locales.
+.git
+.github
+bin
+dist
+frontend/node_modules
+frontend/dist
+**/*.syso
+**/.env
+**/.env.*
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.log
+**/*.pem
+**/*.key
+data

@@ -1,0 +1,73 @@
+# Unidad de systemd de dconnector-server.
+# Instalación (como root):
+#   useradd --system --home-dir /var/lib/dconnector --shell /usr/sbin/nologin dconnector
+#   install -m 0755 dconnector-server /usr/local/bin/dconnector-server
+#   install -d -m 0750 -o root -g dconnector /etc/dconnector   # el certificado TLS externo, si lo hay, debe poder leerlo el grupo dconnector
+#   install -m 0600 -o root -g root dconnector.env.example /etc/dconnector/dconnector.env
+#   install -m 0644 dconnector.service /etc/systemd/system/dconnector.service
+#   systemctl daemon-reload && systemctl enable --now dconnector
+# La clave generada del administrador sale una sola vez:  journalctl -u dconnector | head
+# (o fije DCONNECTOR_ADMIN_PASSWORD en el archivo de entorno antes del primer arranque).
+[Unit]
+Description=dConnector servidor (WhatsApp, Telegram, Messenger e Instagram)
+Documentation=https://github.com/darkmelon/dconnector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dconnector
+Group=dconnector
+# /var/lib/dconnector, creado y con dueño dconnector por systemd.
+StateDirectory=dconnector
+StateDirectoryMode=0750
+EnvironmentFile=/etc/dconnector/dconnector.env
+ExecStart=/usr/local/bin/dconnector-server --data /var/lib/dconnector
+# SIGHUP recarga el certificado TLS externo.
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+# El apagado ordenado tarda hasta 10 s.
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# Endurecimiento
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Lo que crea el servicio (base de datos, subidas, clave TLS) nace sin acceso para otros usuarios.
+UMask=0077
+# Otros procesos del sistema no se ven desde el servicio; sus IPC se limpian al parar.
+ProtectProc=invisible
+RemoveIPC=true
+# Solo las llamadas al sistema de un servicio normal (sin mount, reboot, módulos, etc.).
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallErrorNumber=EPERM
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+# Para escuchar en puertos menores de 1024 sin root, descomente estas dos líneas y use --listen 0.0.0.0:443:
+#CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+#AmbientCapabilities=CAP_NET_BIND_SERVICE
+# AF_NETLINK: Go lo usa para listar las interfaces (net.InterfaceAddrs) al generar el certificado propio con las IP de la máquina.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+ReadWritePaths=/var/lib/dconnector
+
+[Install]
+WantedBy=multi-user.target

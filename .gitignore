@@ -1,0 +1,12 @@
+bin/
+dist/
+frontend/node_modules/
+frontend/dist/
+*.syso
+docs/bitacora/
+*.log
+/dconnector.exe
+
+# Prompts internos de sesión (con rutas locales): no se publican
+/PROMPT-SESION.md
+/docs/PROMPT-SERVIDOR.md
