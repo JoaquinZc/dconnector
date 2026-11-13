@@ -66,3 +66,16 @@ Hoy la imagen solo se construye y se prueba. Para publicarla en `ghcr.io/<propie
 - Runners `ubuntu-24.04-arm` y `windows-11-arm`: gratuitos solo en repositorios PÚBLICOS. En uno privado los jobs arm64 se quedan
   en cola: quítelos de la matriz o use un runner propio.
 - Los pasos de PowerShell fijan `$PSNativeCommandUseErrorActionPreference = $true` para que un comando nativo que falla detenga el paso.
+
+## Imagen en Docker Hub
+
+El trabajo `docker-hub` de `release.yml` construye `deploy/Dockerfile` para `linux/amd64` y `linux/arm64` y la sube como
+`<usuario>/dconnector-server:<versión>` y `:latest` (esta última se omite en versiones con sufijo, como `0.4.0-prueba`).
+
+- Usa los secretos **`DOCKERHUB_USERNAME`** y **`DOCKERHUB_TOKEN`** del **entorno `Production`** (Settings → Environments → Production).
+  El trabajo declara `environment: Production`; no hace falta duplicarlos como secretos del repositorio (quedarían al alcance de
+  cualquier otro flujo).
+- El token es un *Personal access token* de Docker Hub con permiso de lectura y escritura. Para rotarlo: crear uno nuevo, sustituir
+  el secreto y revocar el anterior.
+- Va aparte del Release: si falla, el Release se publica igual (`publish` no depende de él).
+- Solo corre al publicar una versión (etiqueta `v*`), nunca en cada commit.

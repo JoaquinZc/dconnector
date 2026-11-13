@@ -2,7 +2,8 @@
 #   docker build -f deploy/Dockerfile --build-arg VERSION=0.3.2 -t dconnector-server .
 ARG GO_VERSION=1.27.4
 
-FROM golang:${GO_VERSION} AS build
+# Se compila en la plataforma del constructor y se cruza al destino (sin emulador): CGO está desactivado.
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
 ARG VERSION=dev
 ARG TARGETOS
 ARG TARGETARCH
