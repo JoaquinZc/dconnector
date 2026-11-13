@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,8 +57,7 @@ func TestCarpeta02xSinteticaLaAbreElServidor030(t *testing.T) {
 	out, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
-	pid := cmd.Process.Pid
-	t.Cleanup(func() { _ = exec.Command("taskkill", "/T", "/F", "/PID", fmt.Sprint(pid)).Run(); _ = cmd.Wait() })
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 	ready := make(chan bool, 1)
 	go func() {
 		sc := bufio.NewScanner(out)
@@ -76,7 +74,7 @@ func TestCarpeta02xSinteticaLaAbreElServidor030(t *testing.T) {
 	case <-time.After(40 * time.Second):
 		t.Fatal("el servidor 0.3.0 no arrancó sobre la carpeta 0.2.x")
 	}
-	require.NoError(t, exec.Command("taskkill", "/T", "/F", "/PID", fmt.Sprint(pid)).Run())
+	require.NoError(t, cmd.Process.Kill())
 	_ = cmd.Wait()
 
 	// 3) Resultado: migración 3 aplicada, administrador creado, y lo anterior intacto.

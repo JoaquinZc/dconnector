@@ -1,3 +1,5 @@
+//go:build windows
+
 // Package integration prueba el escritorio contra el servidor REAL compilado (dConnector-server): el ciclo
 // del lanzador y el cliente en modo remoto con TLS autofirmado. Compila el servidor una vez; con -short se
 // omite. Todo corre en carpetas temporales: nunca toca la carpeta de datos real.
