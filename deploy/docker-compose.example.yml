@@ -2,7 +2,7 @@
 # Construir desde la raíz del repositorio (el contexto es «..»):  docker compose build
 services:
   dconnector:
-    image: dconnector-server:0.3.2
+    image: jassnoob/dconnector-server:0.3.2
     build:
       context: ..
       dockerfile: deploy/Dockerfile

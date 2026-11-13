@@ -201,7 +201,18 @@ También puedes ejecutarlo en primer plano, sin servicio: `.\dconnector-server.e
 
 ### Docker
 
-Esta versión no depende de una imagen publicada: se construye desde el código con el [`deploy/Dockerfile`](deploy/Dockerfile) (imagen mínima `distroless`, usuario sin privilegios `65532`, volumen `/data`, `HEALTHCHECK` incluido).
+La imagen está publicada en **Docker Hub**: [`jassnoob/dconnector-server`](https://hub.docker.com/r/jassnoob/dconnector-server), para `linux/amd64` y `linux/arm64` (Docker elige la tuya), con las etiquetas `latest` y la de cada versión (por ejemplo `0.3.2`). Es una imagen mínima `distroless` (sin shell), con usuario sin privilegios `65532`, volumen `/data` y `HEALTHCHECK` incluido. También puedes construirla desde el código con el [`deploy/Dockerfile`](deploy/Dockerfile).
+
+```sh
+docker run -d --name dconnector --restart unless-stopped \
+  -p 8443:8443 \
+  -v dconnector-data:/data \
+  -e DCONNECTOR_ADMIN_PASSWORD='una-clave-larga-y-unica' \
+  -e TZ=America/Guayaquil \
+  jassnoob/dconnector-server:latest
+```
+
+Para construirla tú:
 
 ```sh
 docker build -f deploy/Dockerfile --build-arg VERSION=0.3.2 -t dconnector-server:0.3.2 .
