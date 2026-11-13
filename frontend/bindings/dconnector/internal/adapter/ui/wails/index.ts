@@ -5,16 +5,19 @@ import * as DesktopService from "./desktopservice.js";
 import * as FilesService from "./filesservice.js";
 import * as NotificationsService from "./notificationsservice.js";
 import * as SettingsService from "./settingsservice.js";
+import * as UpdateService from "./updateservice.js";
 export {
     DesktopService,
     FilesService,
     NotificationsService,
-    SettingsService
+    SettingsService,
+    UpdateService
 };
 
 export type {
     ConnectionInfo,
     NotifyStatus,
     PickedFile,
+    UpdateStatus,
     UploadedFile
 } from "./models.js";

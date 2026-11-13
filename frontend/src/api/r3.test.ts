@@ -45,11 +45,13 @@ describe("503 y reintentos", () => {
   });
 
   it("429 conserva Retry-After y lo dice en el mensaje", async () => {
+    httpConfig.rateRetries = 0; // aquí solo se prueba el mensaje, no el reintento
     fetchMock.mockResolvedValue(res(429, {}, { "Retry-After": "12" }));
     const e = (await rpcCall("Inbox", "Search", []).catch((x) => x)) as ApiError;
     expect(e.status).toBe(429);
     expect(e.retryAfter).toBe(12);
     expect(e.message).toContain("12 s");
+    httpConfig.rateRetries = 2;
   });
 });
 

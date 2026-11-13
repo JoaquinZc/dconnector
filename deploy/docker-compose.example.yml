@@ -2,12 +2,12 @@
 # Construir desde la raíz del repositorio (el contexto es «..»):  docker compose build
 services:
   dconnector:
-    image: dconnector-server:0.3.1
+    image: dconnector-server:0.3.2
     build:
       context: ..
       dockerfile: deploy/Dockerfile
       args:
-        VERSION: "0.3.1"
+        VERSION: "0.3.2"
     container_name: dconnector
     restart: unless-stopped
     ports:

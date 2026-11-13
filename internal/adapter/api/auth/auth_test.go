@@ -346,8 +346,8 @@ func TestUsuarioDesactivadoPierdeLasSesiones(t *testing.T) {
 	require.Equal(t, 200, e.login("ana", goodPass, "").Code)
 }
 
-func TestLimite600PeticionesPorMinutoPorToken(t *testing.T) {
-	e := newEnv(t, Options{})
+func TestLimitePorMinutoPorToken(t *testing.T) {
+	e := newEnv(t, Options{RatePerMinute: 600})
 	e.addUser("ana", goodPass)
 	e.addUser("beto", goodPass)
 	ta, tb := e.token("ana", goodPass), e.token("beto", goodPass)
@@ -363,6 +363,45 @@ func TestLimite600PeticionesPorMinutoPorToken(t *testing.T) {
 	require.Equal(t, 200, e.do("POST", "/api/v1/rpc/a/b", tb, "", nil).Code, "otro token no se ve afectado")
 	e.advance(61 * time.Second)
 	require.Equal(t, 200, e.do("POST", "/api/v1/rpc/a/b", ta, "", nil).Code)
+}
+
+func TestLimiteGeneralPorDefectoEs3000(t *testing.T) {
+	e := newEnv(t, Options{})
+	e.addUser("ana", goodPass)
+	ta := e.token("ana", goodPass)
+	for i := 0; i < 3000; i++ {
+		if c := e.do("POST", "/api/v1/rpc/a/b", ta, "", nil).Code; c != 200 {
+			t.Fatalf("petición %d: %d", i, c)
+		}
+	}
+	require.Equal(t, 429, e.do("POST", "/api/v1/rpc/a/b", ta, "", nil).Code)
+}
+
+func TestElTokenLocalNoSeLimita(t *testing.T) {
+	const lt = "token-local-de-prueba-0123456789"
+	e := newEnv(t, Options{LocalToken: lt, RatePerMinute: 50})
+	for i := 0; i < 400; i++ {
+		if c := e.do("POST", "/api/v1/rpc/a/b", lt, "127.0.0.1:4000", nil).Code; c != 200 {
+			t.Fatalf("petición local %d: %d", i, c)
+		}
+	}
+}
+
+func TestAlAlcanzarElLimiteSeRegistranLasRutasMasLlamadas(t *testing.T) {
+	e := newEnv(t, Options{RatePerMinute: 20})
+	e.addUser("ana", goodPass)
+	ta := e.token("ana", goodPass)
+	for i := 0; i < 15; i++ {
+		e.do("POST", "/api/v1/rpc/Inbox/Messages", ta, "", nil)
+	}
+	for i := 0; i < 10; i++ {
+		e.do("POST", "/api/v1/rpc/Inbox/ListChats", ta, "", nil)
+	}
+	out := e.logs.String()
+	require.Contains(t, out, "límite de peticiones alcanzado")
+	require.Contains(t, out, "/api/v1/rpc/Inbox/Messages=15")
+	require.Equal(t, 1, strings.Count(out, "límite de peticiones alcanzado"), "se avisa una sola vez por ventana")
+	require.NotContains(t, out, goodPass)
 }
 
 func TestModoLocal(t *testing.T) {

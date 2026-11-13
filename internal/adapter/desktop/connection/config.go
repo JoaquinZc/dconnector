@@ -39,6 +39,10 @@ type Config struct {
 	TLSPins map[string]string `json:"tlsPins,omitempty"`
 	// NotificationsAsked: ya se comprobó el permiso de avisos en el primer arranque.
 	NotificationsAsked bool `json:"notificationsAsked,omitempty"`
+	// UpdateAutoCheck: buscar actualizaciones al abrir (nil = sí). UpdateLastCheck: última comprobación
+	// (milisegundos Unix; 0 = nunca). Campos aditivos: un desktop.json anterior sigue siendo válido.
+	UpdateAutoCheck *bool `json:"updateAutoCheck,omitempty"`
+	UpdateLastCheck int64 `json:"updateLastCheck,omitempty"`
 }
 
 // Store lee y guarda desktop.json.

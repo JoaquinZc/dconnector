@@ -26,7 +26,7 @@ type Options struct {
 	TLS        bool   // el servidor sirve HTTPS (afecta a las cookies/cabeceras)
 
 	// Adiciones (opcionales, valor cero = comportamiento del contrato).
-	RatePerMinute     int  // peticiones por minuto y token (0 = 600)
+	RatePerMinute     int  // peticiones por minuto y token (0 = 3000)
 	ListenNonLoopback bool // el servidor escucha fuera de loopback: el token local se desactiva
 }
 
@@ -83,7 +83,7 @@ func NewService(o Options) (*Service, error) {
 	}
 	rate := o.RatePerMinute
 	if rate <= 0 {
-		rate = 600
+		rate = 3000 // por minuto y token: la interfaz hace muchas llamadas pequeñas; el tope solo frena abusos
 	}
 	s := &Service{
 		db: o.DB, log: o.Log, tls: o.TLS,
@@ -172,9 +172,17 @@ func (s *Service) deny(w http.ResponseWriter, status int) {
 }
 
 func (s *Service) serve(w http.ResponseWriter, r *http.Request, p *principal, next http.Handler) {
-	if ok, wait := s.rate.allow(p.key); !ok {
-		WriteRateLimited(w, wait, "Demasiadas peticiones. Espere un momento e inténtelo de nuevo.")
-		return
+	// El token local es el de la propia aplicación de escritorio, por loopback y en la misma máquina: no se limita
+	// (el tope existe para frenar a un cliente remoto descontrolado, no a la interfaz local).
+	if p.userID != "local" {
+		if ok, wait, first, top := s.rate.allow(p.key, r.URL.Path); !ok {
+			if first && s.log != nil {
+				// Solo rutas y cuentas, nunca datos: sirve para encontrar qué cliente o pantalla gasta el cupo.
+				s.log.Warn("límite de peticiones alcanzado", "usuario", p.username, "rutas_mas_llamadas", top)
+			}
+			WriteRateLimited(w, wait, "Demasiadas peticiones. Espere un momento e inténtelo de nuevo.")
+			return
+		}
 	}
 	next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, p)))
 }

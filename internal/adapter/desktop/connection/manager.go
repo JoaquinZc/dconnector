@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"dconnector/internal/adapter/desktop/client"
@@ -74,6 +75,8 @@ type Manager struct {
 	pending  *CertError
 	changed  chan struct{}
 	closed   bool
+	// forceStop: el próximo apagado ignora «seguir en segundo plano» (actualización).
+	forceStop atomic.Bool
 }
 
 // New crea el administrador. Llame a Start para arrancar el servidor local si corresponde.
@@ -116,7 +119,7 @@ func (m *Manager) startLocal() {
 		m.mu.Unlock()
 		return
 	}
-	l := m.o.NewLocal(func() bool { return m.o.Store.Get().KeepRunning }, m.onLocalStatus)
+	l := m.o.NewLocal(func() bool { return !m.forceStop.Load() && m.o.Store.Get().KeepRunning }, m.onLocalStatus)
 	m.local = l
 	m.localErr = nil
 	m.mu.Unlock()
@@ -475,4 +478,11 @@ func (m *Manager) NotificationsAsked() bool { return m.o.Store.Get().Notificatio
 
 func (m *Manager) MarkNotificationsAsked() error {
 	return m.o.Store.Update(func(c *Config) { c.NotificationsAsked = true })
+}
+
+// ShutdownForUpdate es Shutdown, pero apagando también el servidor local aunque «seguir en segundo plano»
+// esté activo: la actualización reemplaza sus archivos y no puede quedar corriendo.
+func (m *Manager) ShutdownForUpdate() {
+	m.forceStop.Store(true)
+	m.Shutdown()
 }

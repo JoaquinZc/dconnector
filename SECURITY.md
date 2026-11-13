@@ -69,6 +69,8 @@ Se consideran vulnerabilidades, por ejemplo:
 
 **Riesgos que asume el operador:** cifrado en reposo (usa el cifrado de disco del sistema), copias de seguridad (contienen todo lo anterior), exposición a Internet (usa TLS y un firewall) y el riesgo de cuenta con los canales no oficiales.
 
+**Actualizador del escritorio.** Consulta `GET https://api.github.com/repos/JoaquinZc/dconnector/releases/latest` (sin autenticación y sin datos de la persona), descarga solo por `https` y solo desde `api.github.com`, `github.com`, `objects.githubusercontent.com` y `release-assets.githubusercontent.com` (se comprueba cada redirección), con tope de tamaño y tiempo, valida el nombre del asset contra el patrón esperado y **verifica el SHA-256 contra `SHA256SUMS` de la misma Release** antes de ejecutar o extraer nada (el zip portable se extrae con protección contra zip-slip y enlaces, y se repite la verificación en el ayudante). **Limitación:** si la cuenta de GitHub del proyecto se compromete, el atacante controla la Release y las sumas, y la verificación no lo detecta; por eso conviene firmar el instalador y los ejecutables en el futuro.
+
 ## Divulgación
 
 Se prefiere la divulgación coordinada: danos tiempo razonable para corregir antes de publicar. Cuando haya una corrección, se anunciará en las notas de la versión.

@@ -1,6 +1,6 @@
 # dConnector · Manual de uso
 
-Versión 0.3.1 · para Windows 10 y 11 (x64 y arm64) · funciona en tu equipo sin cuentas de usuario, sin licencia y sin telemetría. Desde la 0.3.0 la aplicación puede usar el **servidor local** que lleva incluido o conectarse a un **servidor remoto** ([apartado 18](#18-conexión-local-o-servidor-remoto)).
+Versión 0.3.2 · para Windows 10 y 11 (x64 y arm64) · funciona en tu equipo sin cuentas de usuario, sin licencia y sin telemetría. Desde la 0.3.0 la aplicación puede usar el **servidor local** que lleva incluido o conectarse a un **servidor remoto** ([apartado 18](#18-conexión-local-o-servidor-remoto)).
 
 dConnector reúne varias cuentas de **WhatsApp, Telegram, Messenger e Instagram** en una sola bandeja de chats (con el aspecto de WhatsApp Web), publica y mira estados, hace campañas con envío prudente, programa mensajes, guarda tus contactos y listas, muestra estadísticas y puede **hablar con un servidor tuyo** (un bot, una IA, un almacén de mensajes) por un protocolo propio.
 
@@ -45,7 +45,7 @@ Hay dos formas. Las dos dan el mismo programa.
 | Instala en | Tu usuario de Windows (`%LOCALAPPDATA%\Programs\dConnector`). **No pide permisos de administrador** | Donde descomprimas la carpeta |
 | Accesos directos | Menú Inicio y Escritorio, llamados «dConnector» | Ninguno: abres `dConnector.exe` |
 | Datos | `%APPDATA%\dConnector` | Carpeta `data\` junto al `.exe` |
-| Actualizar | Ejecuta el `.msi` nuevo: se instala **encima** y conserva tus datos | Sustituye `dConnector.exe` por el nuevo y deja `data\` como está |
+| Actualizar | Botón en Ajustes › Actualizaciones, o ejecuta el `.msi` nuevo: se instala **encima** y conserva tus datos | El mismo botón, o sustituye los ejecutables y deja `data\` como está |
 | Quitar | «Aplicaciones instaladas» de Windows. **Desinstalar NO borra tus datos** | Borra la carpeta (y con ella `data\`) |
 
 ### Instalador (.msi)
@@ -71,11 +71,19 @@ dConnector **no está firmado** con un certificado de código (cuesta dinero y n
 
 Pasa lo mismo con el `.msi` y con el `.exe` portable. Solo lo ves la primera vez de cada archivo.
 
+### Actualizar desde la aplicación
+
+**Ajustes › Actualizaciones.** Al abrir dConnector (unos 10 segundos después, y como máximo una vez cada 24 horas) mira en la Release de GitHub si hay una versión más nueva; si la hay, aparece un aviso discreto con **«Actualizar»** y **«Más tarde»** (no vuelve a salir para esa versión en esa sesión). También puedes pulsar **«Buscar actualizaciones»**, o apagar la búsqueda automática con **«Buscar al abrir»** (los fallos de la búsqueda automática no se avisan).
+
+**«Actualizar a X.Y.Z»** hace, en este orden: 1) descarga el `.msi` (si instalaste con MSI) o el `.zip` (portable) de tu arquitectura, solo desde `https` y desde servidores de GitHub; 2) **verifica su SHA-256** con `SHA256SUMS` de la misma Release (si no coincide, lo borra y no instala nada); 3) cierra dConnector y su servidor local, aunque tuvieras «Seguir en segundo plano»; 4) instala encima **sin pedir administrador**; 5) vuelve a abrir dConnector. Tus datos no se tocan. No se envía ningún dato tuyo a GitHub (solo `dConnector/<versión>` como identificación del programa).
+
+**Sin firma, qué esperar de Windows.** Los instaladores y ejecutables no están firmados. Windows 11 con *Smart App Control* o *SmartScreen*, o tu antivirus, puede bloquearlos. dConnector no intenta saltarse esas protecciones: si algo falla verás un cuadro con la causa probable, la ruta del instalador descargado (`datos\updates\<versión>`) y la del registro (`datos\logs\desktop\update-<fecha>.log`), y se abre la carpeta; en Ajustes también está **«Abrir carpeta»**. Con el instalador a mano puedes seguir el apartado de [SmartScreen](#el-aviso-de-smartscreen-windows-protegió-su-pc). Las copias que no son MSI ni portable (desarrollo) solo ofrecen abrir la página de la versión.
+
 ### Requisitos
 
 - Windows 10 u 11: x64 o arm64, con el instalador de tu arquitectura (no hay versión de 32 bits).
 - **WebView2** (el motor que dibuja la ventana). Windows 10 y 11 ya lo traen instalado.
-- Conexión a internet para los canales. dConnector **no hace ninguna otra llamada de red** que no sea a WhatsApp, Telegram, Meta, a los destinos que tú configures o al servidor remoto que elijas. No hay actualizador automático.
+- Conexión a internet para los canales. dConnector **no hace ninguna otra llamada de red** que no sea a WhatsApp, Telegram, Meta, a los destinos que tú configures, al servidor remoto que elijas o a GitHub para saber si hay una versión nueva (desactivable, sin enviar datos tuyos: ver [Actualizar](#actualizar-desde-la-aplicación)).
 - En el modo local, un puerto de tu propio equipo (127.0.0.1, elegido al azar): no hay que abrir nada en el cortafuegos y no es visible desde la red.
 
 ### Una sola ventana, una sola copia
@@ -646,6 +654,7 @@ Para una prueba completa sin escribir un servidor, usa el **servidor de ejemplo*
 | **Descargas automáticas** | Por tipo: **Fotos, Audios, Notas de voz, Vídeos, Documentos, Stickers**, con su interruptor y el tamaño máximo en MB. Por defecto: fotos, audios, notas de voz y stickers sí (20, 20, 20 y 5 MB); vídeos y documentos no (50 y 20 MB) |
 | **Campañas** | **«Palabras de baja»** (separadas por comas) y **«Texto del pie»** |
 | **Datos** | La ruta de la carpeta de datos, **«Abrir carpeta»**, **«Abrir registros»** y **«Registro detallado»** |
+| **Actualizaciones** | **Versión instalada**, **«Buscar actualizaciones»**, las notas de la versión nueva, **«Actualizar a X.Y.Z»** con su barra de progreso y el interruptor **«Buscar al abrir»**. Ver [Actualizar desde la aplicación](#actualizar-desde-la-aplicación) |
 | **Acerca de** | **Versión**, **Protocolo** (v1) y la lista de **licencias de terceros** |
 
 **«Registro detallado»** hace que el registro de errores guarde más información (útil para diagnosticar un fallo). Actívalo solo mientras reproduces un problema.

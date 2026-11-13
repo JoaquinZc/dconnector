@@ -20,6 +20,7 @@ const svc = vi.hoisted(() => ({
 vi.mock("@/api/transport", async () => (await import("@/test/svcTransport")).svcTransport(svc));
 vi.mock("@wailsio/runtime", () => ({ Events: { On: vi.fn(() => () => undefined) } }));
 
+import { resetToastDedupe } from "@/api";
 import type { AccountView, Campaign, Contact, Destination } from "@/api/types";
 import { chat } from "@/components/chat/testkit";
 import AccountsPage from "@/pages/AccountsPage";
@@ -127,6 +128,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   useUI.setState({ toasts: [] });
+  resetToastDedupe();
   useAccounts.setState({ views: { "wa-1": view("wa-1", "Ventas") }, order: ["wa-1"], loaded: true });
   useInbox.setState({ chats: {}, order: [], filter: DEFAULT_FILTER, loading: false, loaded: false, hasMore: false });
   useStatuses.setState({ authors: [], authorsLoaded: false, statuses: {} });

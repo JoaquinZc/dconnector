@@ -7,7 +7,7 @@ Desde la versión **0.3.0** son dos piezas del mismo código:
 - **dConnector (escritorio, Windows):** la aplicación con ventana. Funciona sola (arranca su propio servidor local) o como cliente de un servidor remoto.
 - **dconnector-server (Windows y Linux):** el servidor sin ventana. Mantiene las cuentas conectadas las 24 horas, guarda los datos y ofrece una API HTTPS protegida con usuario y clave. Pensado para una máquina que está siempre encendida: un VPS, un servidor propio, Docker.
 
-Es para ti si atiendes clientes o comunidades por varios canales y quieres verlos juntos, programar mensajes, hacer campañas con envío prudente o conectar tus mensajes a un servidor tuyo, sin entregar tus conversaciones a un servicio de terceros: **los datos viven en tu equipo o en tu servidor**. No hay telemetría ni actualizador remoto; las únicas llamadas de red son las de los canales y las de los destinos que configures.
+Es para ti si atiendes clientes o comunidades por varios canales y quieres verlos juntos, programar mensajes, hacer campañas con envío prudente o conectar tus mensajes a un servidor tuyo, sin entregar tus conversaciones a un servicio de terceros: **los datos viven en tu equipo o en tu servidor**. No hay telemetría; las únicas llamadas de red son las de los canales, las de los destinos que configures y la consulta opcional de versiones nuevas a GitHub (se puede desactivar).
 
 <!-- capturas: pendiente. Se añadirán a docs/img/ solo cuando haya capturas sin datos personales (ni chats, ni nombres, ni números). -->
 
@@ -89,7 +89,7 @@ Requisitos: Windows 10 u 11 y **WebView2** (ya viene en Windows 10 y 11 al día)
 
 **Dónde quedan tus datos.** Con el MSI, en `%APPDATA%\dConnector`; con el portable, en `data\`. Allí están las bases de datos (`app.db`, y una `account.db` por cuenta), los medios descargados y los registros. **No están cifrados**: quien tenga acceso a tu usuario de Windows puede leerlos.
 
-**Actualizar.** Ejecuta el `.msi` nuevo: se instala encima y conserva los datos. En el portable, sustituye los ejecutables y deja `data\` como está. Ver [Actualizar](#actualizar).
+**Actualizar.** Ejecuta el `.msi` nuevo: se instala encima y conserva los datos. También puedes actualizar desde la propia aplicación (**Ajustes › Actualizaciones**). Ver [Actualizar](#actualizar).
 
 **Desinstalar.** «Configuración › Aplicaciones › Aplicaciones instaladas › dConnector › Desinstalar». **No borra tus datos** (`%APPDATA%\dConnector`): si los quieres borrar, elimina esa carpeta a mano con dConnector cerrado. En el portable, borra la carpeta.
 
@@ -204,14 +204,14 @@ También puedes ejecutarlo en primer plano, sin servicio: `.\dconnector-server.e
 Esta versión no depende de una imagen publicada: se construye desde el código con el [`deploy/Dockerfile`](deploy/Dockerfile) (imagen mínima `distroless`, usuario sin privilegios `65532`, volumen `/data`, `HEALTHCHECK` incluido).
 
 ```sh
-docker build -f deploy/Dockerfile --build-arg VERSION=0.3.1 -t dconnector-server:0.3.1 .
+docker build -f deploy/Dockerfile --build-arg VERSION=0.3.2 -t dconnector-server:0.3.2 .
 
 docker run -d --name dconnector --restart unless-stopped \
   -p 8443:8443 \
   -v dconnector-data:/data \
   -e DCONNECTOR_ADMIN_PASSWORD='una-clave-larga-y-unica' \
   -e TZ=America/Guayaquil \
-  dconnector-server:0.3.1
+  dconnector-server:0.3.2
 
 docker logs dconnector            # huella TLS y, si no pusiste clave, la clave generada
 ```
@@ -410,7 +410,17 @@ La zona horaria del servidor es la del sistema (`TZ` en Docker y systemd).
 
 ## Actualizar
 
-**Escritorio.** MSI: ejecuta el nuevo; se instala encima conservando los datos. Portable: reemplaza los ejecutables, no `data\`. Antes de actualizar, sal de dConnector con «Salir» (también del servidor local si lo dejaste en segundo plano).
+**Escritorio, con un botón.** En **Ajustes › Actualizaciones** (y con un aviso discreto al abrir) dConnector busca la última versión en la Release de GitHub y, si hay una nueva, **«Actualizar a X.Y.Z»**:
+
+1. Descarga el `.msi` (instalación con MSI) o el `.zip` (portable) de tu arquitectura y **verifica su SHA-256 contra `SHA256SUMS` de esa misma Release**. Si no coincide, lo borra y no instala nada.
+2. Cierra la aplicación y el servidor local (aunque tuvieras «Seguir en segundo plano»), instala encima **sin pedir administrador** y vuelve a abrir dConnector (minimizado, si lo tenías así).
+3. Tus datos (`%APPDATA%\dConnector` o `data\` del portable) no se tocan.
+
+Solo se descarga desde `https` y desde `api.github.com`, `github.com` y `*.githubusercontent.com` (`objects` y `release-assets`). **No se envía ningún dato tuyo**: es una petición `GET` sin autenticar con el encabezado `User-Agent: dConnector/<versión>`. La búsqueda automática ocurre al abrir (unos 10 s después, como máximo cada 24 h) y se apaga con el interruptor **«Buscar al abrir»**; sus fallos son silenciosos. **«Buscar actualizaciones»** la hace a mano. Las copias de desarrollo o ubicadas fuera del instalador y del portable solo muestran el enlace a la página de la versión.
+
+**Sin firma.** Los ejecutables no están firmados: Windows 11 con *Smart App Control* o *SmartScreen*, o un antivirus, puede bloquear el instalador o el programa nuevo. dConnector no intenta saltarse ninguna protección: si algo falla, un cuadro de Windows explica la causa probable y dónde quedaron el instalador descargado (`<datos>\updates\<versión>`) y el registro (`<datos>\logs\desktop\update-<fecha>.log`), y abre la carpeta (también está el botón **«Abrir carpeta»**). Entonces puedes instalar a mano el `.msi` o el `.zip`.
+
+**A mano.** MSI: ejecuta el nuevo; se instala encima conservando los datos. Portable: reemplaza los ejecutables, no `data\`. Antes, sal de dConnector con «Salir» (también del servidor local si lo dejaste en segundo plano).
 
 **Desde 0.2.x.** La carpeta `%APPDATA%\dConnector` se reutiliza tal cual: el servidor local la abre y añade tablas nuevas a `app.db` (usuarios y sesiones) sin tocar las que ya existían. Por precaución, **copia la carpeta antes** de la primera vez que abras 0.3.0 ([Copias de seguridad](#copias-de-seguridad)). La versión 0.3.0 no cambia cómo se añaden las cuentas ni sus datos.
 
@@ -488,7 +498,7 @@ Los nombres de los artefactos de `dist\` son los de la [tabla de descargas](#des
 
 ```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -buildvcs=false \
-  -ldflags "-s -w -X dconnector/internal/buildinfo.Version=0.3.1" \
+  -ldflags "-s -w -X dconnector/internal/buildinfo.Version=0.3.2" \
   -o dconnector-server ./cmd/dconnector-server
 ```
 
@@ -571,6 +581,7 @@ WhatsApp, Telegram, Messenger e Instagram son marcas de sus respectivos dueños 
 | [`docs/14-API-SERVIDOR.md`](docs/14-API-SERVIDOR.md) | API del servidor (v1) |
 | [`docs/PROTOCOLO-v1.md`](docs/PROTOCOLO-v1.md) | Protocolo para servidores externos |
 | [`docs/PLAN-SERVIDOR.md`](docs/PLAN-SERVIDOR.md) | Plan y estado de la versión 0.3.0 |
+| [`docs/RELEASE-NOTES-v0.3.2.md`](docs/RELEASE-NOTES-v0.3.2.md) | Notas de la versión 0.3.2 |
 | [`docs/RELEASE-NOTES-v0.3.1.md`](docs/RELEASE-NOTES-v0.3.1.md) | Notas de la versión 0.3.1 |
 | [`docs/RELEASE-NOTES-v0.3.0.md`](docs/RELEASE-NOTES-v0.3.0.md) | Notas de la versión 0.3.0 |
 | [`docs/BITACORA.md`](docs/BITACORA.md) | Bitácora de construcción: versiones exactas, desviaciones y límites |

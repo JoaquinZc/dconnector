@@ -76,7 +76,7 @@ tokens, rutas del servidor ni trazas. Un error de un servicio del núcleo conser
 - **Límite de intentos**: 5 fallos de login por IP en 15 minutos y 10 por usuario en 15 minutos; al superarlo,
   `429 rate_limited` con `Retry-After`, y el bloqueo se duplica con cada reincidencia (tope 1 hora). Los éxitos
   no cuentan. El mensaje de login fallido es el mismo exista o no el usuario (`Usuario o clave incorrectos.`) y el
-  tiempo de respuesta se iguala. Límite general: 600 peticiones por minuto por token.
+  tiempo de respuesta se iguala. Límite general: 3000 peticiones por minuto por token de sesión remoto (el token local del escritorio no se limita; al alcanzarlo, el servidor registra las rutas más llamadas). Un `429` se produce **antes** de ejecutar la llamada: repetirla es siempre seguro.
 - **Modo local**: el escritorio lanza el servidor con `DCONNECTOR_LOCAL_TOKEN=<aleatorio>` (por entorno, nunca por
   argumento). Ese valor se acepta como `Bearer` con el usuario `local` (rol `admin`), **solo si la conexión llega por
   loopback** y el servidor escucha en loopback. No crea usuarios. Sirve también para media y ticket.

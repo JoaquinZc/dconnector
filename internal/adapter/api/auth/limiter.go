@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"fmt"
 	"net"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -134,6 +137,8 @@ type rateLimiter struct {
 type rateWin struct {
 	start time.Time
 	n     int
+	// paths cuenta las rutas de la ventana (máximo 64 distintas) para poder decir quién gastó el cupo.
+	paths map[string]int
 }
 
 func newRateLimiter(limit int, now func() time.Time) *rateLimiter {
@@ -141,7 +146,7 @@ func newRateLimiter(limit int, now func() time.Time) *rateLimiter {
 }
 
 // allow cuenta una petición; si se pasa del límite devuelve el tiempo que falta para la ventana siguiente.
-func (r *rateLimiter) allow(key string) (bool, time.Duration) {
+func (r *rateLimiter) allow(key, path string) (ok bool, wait time.Duration, firstRejection bool, top string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := r.now()
@@ -156,14 +161,38 @@ func (r *rateLimiter) allow(key string) (bool, time.Duration) {
 	w := r.m[key]
 	if w == nil || now.Sub(w.start) >= time.Minute {
 		if w == nil && len(r.m) >= maxTracked {
-			return true, 0
+			return true, 0, false, ""
 		}
-		w = &rateWin{start: now}
+		w = &rateWin{start: now, paths: map[string]int{}}
 		r.m[key] = w
 	}
 	w.n++
-	if w.n > r.limit {
-		return false, w.start.Add(time.Minute).Sub(now)
+	if _, known := w.paths[path]; known || len(w.paths) < 64 {
+		w.paths[path]++
 	}
-	return true, 0
+	if w.n > r.limit {
+		return false, w.start.Add(time.Minute).Sub(now), w.n == r.limit+1, topPaths(w.paths, 5)
+	}
+	return true, 0, false, ""
+}
+
+// topPaths devuelve las n rutas más repetidas con su cuenta, p. ej. "/api/v1/rpc/Inbox/Messages=412, …".
+func topPaths(m map[string]int, n int) string {
+	type kv struct {
+		k string
+		v int
+	}
+	all := make([]kv, 0, len(m))
+	for k, v := range m {
+		all = append(all, kv{k, v})
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].v > all[j].v || (all[i].v == all[j].v && all[i].k < all[j].k) })
+	if len(all) > n {
+		all = all[:n]
+	}
+	parts := make([]string, len(all))
+	for i, e := range all {
+		parts[i] = fmt.Sprintf("%s=%d", e.k, e.v)
+	}
+	return strings.Join(parts, ", ")
 }

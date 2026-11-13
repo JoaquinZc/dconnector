@@ -12,6 +12,7 @@ import CampaignsSection from "@/components/settings/CampaignsSection";
 import DataSection from "@/components/settings/DataSection";
 import GeneralSection from "@/components/settings/GeneralSection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
+import UpdatesSection from "@/components/settings/UpdatesSection";
 import {
   formFromDraft,
   isDirty,
@@ -24,11 +25,12 @@ import { clearDraft, loadDraft, saveDraft } from "@/lib/draft";
 import { cx } from "@/lib/cx";
 import { useUI } from "@/store/ui";
 
-type SectionId = "general" | "connection" | "notifications" | "downloads" | "campaigns" | "data" | "about";
+type SectionId = "general" | "connection" | "updates" | "notifications" | "downloads" | "campaigns" | "data" | "about";
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: "general", label: "General" },
   { id: "connection", label: "Conexión" },
+  { id: "updates", label: "Actualizaciones" },
   { id: "notifications", label: "Notificaciones" },
   { id: "downloads", label: "Descargas automáticas" },
   { id: "campaigns", label: "Campañas" },
@@ -176,6 +178,7 @@ export default function SettingsPage() {
               <>
                 {section === "general" && <GeneralSection form={form} patch={patch} />}
                 {section === "connection" && <ConnectionSection />}
+                {section === "updates" && <UpdatesSection />}
                 {section === "notifications" && <NotificationsSection form={form} patch={patch} />}
                 {section === "downloads" && <AutoDownloadSection form={form} patch={patch} />}
                 {section === "campaigns" && <CampaignsSection form={form} patch={patch} />}

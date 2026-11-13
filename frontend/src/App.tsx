@@ -4,6 +4,7 @@ import { closeTopModal } from "@/components/common/Modal";
 import { ConnectingScreen, ConnectionBanner, LoginScreen, OfflineScreen } from "@/components/connection/Screens";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import NotifyNotice from "@/components/common/NotifyNotice";
+import UpdateNotice from "@/components/common/UpdateNotice";
 import Shell from "@/components/layout/Shell";
 import { PageView, preloadPages } from "@/pages/registry";
 import { startApp } from "@/store/app";
@@ -72,6 +73,7 @@ export default function App() {
         </ErrorBoundary>
       </Shell>
       <NotifyNotice />
+      <UpdateNotice />
       <ConnectionBanner />
       {needLogin && <LoginScreen overlay />}
     </>

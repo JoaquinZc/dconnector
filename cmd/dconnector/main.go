@@ -23,6 +23,7 @@ import (
 	"dconnector/internal/adapter/desktop/connection"
 	"dconnector/internal/adapter/desktop/localserver"
 	"dconnector/internal/adapter/desktop/secret"
+	"dconnector/internal/adapter/desktop/updater"
 	"dconnector/internal/adapter/desktop/winnotify"
 	uiwails "dconnector/internal/adapter/ui/wails"
 	"dconnector/internal/buildinfo"
@@ -36,6 +37,10 @@ import (
 const evtConnection = "desktop:connection"
 
 func main() {
+	// Modo ayudante de la actualización: dConnector.exe copiado a una carpeta temporal que instala la versión nueva.
+	if updater.IsApplyInvocation(os.Args[1:]) {
+		os.Exit(updater.RunApply(os.Args[1:]))
+	}
 	var (
 		showVersion   = flag.Bool("version", false, "imprime la versión y sale")
 		minimized     = flag.Bool("minimized", false, "arranca oculto en la bandeja")
@@ -43,10 +48,11 @@ func main() {
 		requireServer = flag.Bool("require-server", false, "con --selftest, falla si no se encuentra dConnector-server (paquetes de instalación)")
 		serverExe     = flag.String("server-exe", "", "ruta de dConnector-server (desarrollo; también DCONNECTOR_SERVER_EXE)")
 		out           = flag.String("out", "", "archivo donde escribir la salida de --version y --selftest")
+		updateTest    = flag.String("update-selftest", "", "comprobación sin ventana del actualizador: check o apply (pruebas con DCONNECTOR_UPDATE_API)")
 	)
 	flag.Parse()
 
-	if *showVersion || *selftest {
+	if *showVersion || *selftest || *updateTest != "" {
 		attachConsole()
 		w, closeOut := outputWriter(*out)
 		if *showVersion {
@@ -54,7 +60,12 @@ func main() {
 			closeOut()
 			return
 		}
-		err := runSelftest(w, *serverExe, *requireServer)
+		var err error
+		if *updateTest != "" {
+			err = runUpdateSelftest(w, *updateTest)
+		} else {
+			err = runSelftest(w, *serverExe, *requireServer)
+		}
 		if err != nil {
 			fmt.Fprintln(w, "ERROR:", err)
 		}
@@ -187,11 +198,30 @@ func run(startMinimized bool, serverExe string) error {
 	})
 	winNotifier.OnActivate(func(key model.ChatKey) { br.OnToastActivate(string(key)) })
 
+	// Actualizaciones: comprobación al abrir (10 s después, máximo cada 24 h) y botón «Actualizar» (docs/MANUAL).
+	upd := newUpdater(store, exe,
+		func(ev string, payload any) {
+			if app != nil {
+				app.Event.Emit(ev, payload)
+			}
+		},
+		func() {
+			// El servidor local también se apaga (aunque esté «en segundo plano»): se reemplazan sus archivos.
+			mgr.ShutdownForUpdate()
+			if desktop != nil {
+				desktop.Quit()
+			}
+		},
+		func() bool { return mainWindow != nil && (!mainWindow.IsVisible() || mainWindow.IsMinimised()) },
+	)
+	upd.Cleanup()
+
 	services := []application.Service{
 		application.NewService(uiwails.NewDesktopService(mgr)),
 		application.NewService(uiwails.NewNotificationsService(winNotifier, br, mgr)),
 		application.NewService(&uiwails.SettingsService{}),
 		application.NewService(uiwails.NewFilesService(mgr)),
+		application.NewService(uiwails.NewUpdateService(upd)),
 		application.NewService(notifier),
 	}
 
@@ -243,6 +273,13 @@ func run(startMinimized bool, serverExe string) error {
 	// Al estar la aplicación lista, el seguidor mantiene el flujo de eventos con el servidor vigente.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		go follow(rootCtx, mgr, br, emit)
+		go func() {
+			select {
+			case <-time.After(10 * time.Second):
+				upd.AutoCheck(rootCtx)
+			case <-rootCtx.Done():
+			}
+		}()
 	})
 
 	// Ctrl+C en consola apaga ordenadamente.

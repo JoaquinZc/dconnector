@@ -510,6 +510,7 @@ export const GENERAL_ROWS = [
 export const SETTINGS_SECTIONS = [
   { id: "general", label: "General" },
   { id: "connection", label: "Conexión" },
+  { id: "updates", label: "Actualizaciones" },
   { id: "notifications", label: "Notificaciones" },
   { id: "downloads", label: "Descargas automáticas" },
   { id: "campaigns", label: "Campañas" },

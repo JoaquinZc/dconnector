@@ -48,9 +48,25 @@ function quiet(e: unknown): boolean {
   return e.code === "network" && useConnection.getState().link !== "connected";
 }
 
+/** El mismo aviso de error no se repite durante unos segundos (varias llamadas fallan a la vez por la misma causa). */
+const TOAST_DEDUPE_MS = 6000;
+let lastToast = { msg: "", at: 0 };
+
 function report(e: unknown, opts?: WrapOptions): never {
-  if (!opts?.silent && !quiet(e)) useUI.getState().toast("error", errorMessage(e));
+  if (!opts?.silent && !quiet(e)) {
+    const msg = errorMessage(e);
+    const now = Date.now();
+    if (msg !== lastToast.msg || now - lastToast.at > TOAST_DEDUPE_MS) {
+      lastToast = { msg, at: now };
+      useUI.getState().toast("error", msg);
+    }
+  }
   throw e;
+}
+
+/** Solo para pruebas: olvida el último aviso. */
+export function resetToastDedupe(): void {
+  lastToast = { msg: "", at: 0 };
 }
 
 function wrap<A extends unknown[], R>(fn: Fn<A, R>, opts?: WrapOptions): (...args: A) => Promise<R> {

@@ -25,6 +25,15 @@ export const NETWORK_MESSAGE = "No se pudo conectar con el servidor.";
 export const httpConfig = {
   /** Esperas entre reintentos de un 503 (servidor arrancando); la longitud es el número de reintentos. */
   retryDelays: [400, 1200] as number[],
+  /**
+   * Un 429 (demasiadas peticiones) lo da el servidor ANTES de ejecutar la llamada, así que repetirla es siempre
+   * seguro, también un envío. Se espera lo que pida `Retry-After` si es corto; si es más largo, se avisa.
+   */
+  rateRetries: 2,
+  /** Espera máxima (segundos) que se acepta para repetir un 429 en silencio. */
+  rateMaxWaitSeconds: 15,
+  /** Milisegundos por cada segundo de `Retry-After` (las pruebas lo reducen). */
+  rateMsPerSecond: 1000,
 };
 
 /** Ganchos que registra el store de conexión (así este módulo no lo importa). */
@@ -102,6 +111,7 @@ export interface RequestOptions {
 export async function request(path: string, opts: RequestOptions = {}): Promise<Response> {
   const auth = opts.auth !== false;
   let renewed = false;
+  let rateRetries = 0;
   for (let attempt = 0; ; attempt++) {
     const headers: Record<string, string> = { "X-DConnector-Client": CLIENT_NAME, ...opts.headers };
     if (auth && session.token) headers.Authorization = `Bearer ${session.token}`;
@@ -133,6 +143,19 @@ export async function request(path: string, opts: RequestOptions = {}): Promise<
     const mayRetry = opts.retryOn503 ?? (method === "GET" || method === "HEAD");
     if (res.status === 503 && mayRetry && attempt < httpConfig.retryDelays.length) {
       await sleep(httpConfig.retryDelays[attempt]);
+      continue;
+    }
+    // 429: el servidor no llegó a ejecutar nada, repetir es seguro (salvo el inicio de sesión, cuyo bloqueo es de seguridad).
+    if (
+      res.status === 429 &&
+      !path.includes("/auth/login") &&
+      err.retryAfter > 0 &&
+      err.retryAfter <= httpConfig.rateMaxWaitSeconds &&
+      rateRetries < httpConfig.rateRetries &&
+      !opts.signal?.aborted
+    ) {
+      rateRetries++;
+      await sleep(err.retryAfter * httpConfig.rateMsPerSecond + 50);
       continue;
     }
     throw err;
