@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -31,6 +32,17 @@ const cspPlugin = (): Plugin => ({
   ],
 });
 
+// El paquete Go `frontend` incrusta `dist/` (go:embed): sin ningún archivo ahí, `go vet`/`go list` fallan en un clon limpio.
+// `vite build` vacía la carpeta; este complemento vuelve a crear el marcador versionado.
+const keepDistMarker = (): Plugin => ({
+  name: "dc-keep-dist-marker",
+  apply: "build",
+  closeBundle() {
+    fs.mkdirSync(path.resolve(import.meta.dirname, "dist"), { recursive: true });
+    fs.writeFileSync(path.resolve(import.meta.dirname, "dist", ".gitkeep"), "");
+  },
+});
+
 export default defineConfig({
   server: {
     host: "127.0.0.1",
@@ -40,7 +52,7 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "src") },
   },
-  plugins: [react(), tailwindcss(), wails("./bindings"), cspPlugin()],
+  plugins: [react(), tailwindcss(), wails("./bindings"), cspPlugin(), keepDistMarker()],
   test: {
     environment: "jsdom",
     globals: true,
