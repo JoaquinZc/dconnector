@@ -1,4 +1,4 @@
-import { Loader2, MessagesSquare } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -15,6 +15,8 @@ import {
 import { api } from "@/api";
 import type { Range } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { ConversationsStatsSkeleton } from "@/pages/skeletons/zones";
 import { useUI } from "@/store/ui";
 import RankList, { type RankItem } from "./RankList";
 import {
@@ -61,18 +63,15 @@ function rankItems(rows: ChatRankView[], value: (r: ChatRankView) => number, met
 
 /** Pestaña «Conversaciones»: KPIs con comparación, mensajes por día, mapa de calor, tiempos, quién inicia y rankings. */
 export default function ConversationsTab({ range, accountIds }: Props) {
-  const { data, loading } = useStatsLoad<ConversationView>(
+  const { data, loading, failed, retry } = useStatsLoad<ConversationView>(
     () => api.stats.Conversations(accountIds.length ? accountIds : null, range),
     readConversationOverview,
     [range.days, range.from, range.to, accountIds.join(",")],
   );
 
   if (!data) {
-    return (
-      <div className="flex justify-center p-10 text-muted">
-        <Loader2 className="animate-spin" size={22} />
-      </div>
-    );
+    if (failed) return <LoadError what="las estadísticas de conversaciones" onRetry={retry} className="flex-1" />;
+    return <ConversationsStatsSkeleton />;
   }
   if (!data.hasData) return <EmptyState icon={MessagesSquare} title="Sin mensajes en este periodo" className="flex-1" />;
 

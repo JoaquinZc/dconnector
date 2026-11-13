@@ -19,6 +19,8 @@ interface Props {
 }
 
 const COLS = "grid-cols-[150px_130px_minmax(0,1fr)_90px_minmax(0,1.6fr)_110px_168px]";
+/** Las mismas columnas como `grid-template-columns` (para el esqueleto de la primera carga). */
+export const SCHEDULED_COLS = "150px 130px minmax(0,1fr) 90px minmax(0,1.6fr) 110px 168px";
 
 /** Tabla de programados: fecha, cuenta, destino, tipo, contenido, estado y acciones. */
 export default function ScheduledTable({ items, views, busyId, onEdit, onSendNow, onCancel, onCancelSeries, onDelete }: Props) {

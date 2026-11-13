@@ -5,7 +5,7 @@ import { ConnectingScreen, ConnectionBanner, LoginScreen, OfflineScreen } from "
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import NotifyNotice from "@/components/common/NotifyNotice";
 import Shell from "@/components/layout/Shell";
-import { PageView } from "@/pages/registry";
+import { PageView, preloadPages } from "@/pages/registry";
 import { startApp } from "@/store/app";
 import { PAGE_ORDER, applyTheme, useUI } from "@/store/ui";
 
@@ -26,6 +26,7 @@ export default function App() {
   // Los estados y el flujo en vivo arrancan al estar lista la conexión.
   useEffect(() => {
     if (!ready) return;
+    preloadPages(); // solo código de las páginas (sin consultas), para que cambiar de pestaña sea instantáneo
     return startApp();
   }, [ready]);
 

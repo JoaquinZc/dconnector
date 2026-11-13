@@ -129,8 +129,17 @@ Assert-True ([int]$closeSeq[0][1] -lt [int]$remSeq[0][1]) "el cierre ($($closeSe
 
 # La desinstalación no debe tocar %APPDATA%\dConnector: nada en carpetas de datos del usuario.
 $dirs = Get-MsiRows $db 'SELECT `Directory`, `Directory_Parent`, `DefaultDir` FROM `Directory`' 3
-$malas = @($dirs | Where-Object { $_[0] -match 'AppData|Personal|Local|Common' -or $_[1] -match 'AppData|Personal|Local|Common' })
-Assert-True ($malas.Count -eq 0) 'ninguna carpeta del MSI cuelga de AppData (los datos de %APPDATA%\dConnector no se tocan)'
+$malas = @($dirs | Where-Object { $_[0] -match '^(AppDataFolder|PersonalFolder|CommonAppDataFolder)$' -or $_[1] -match '^(AppDataFolder|PersonalFolder|CommonAppDataFolder)$' })
+Assert-True ($malas.Count -eq 0) 'ninguna carpeta del MSI cuelga de %APPDATA% (los datos de %APPDATA%\dConnector no se tocan)'
+# Instalación POR USUARIO de verdad: INSTALLFOLDER debe colgar de LocalAppDataFolder y nunca de ProgramFiles
+# (ProgramFiles6432Folder en un MSI de 64 bits apunta a la carpeta Program Files y exige administrador).
+$parentOf = @{}
+foreach ($d in $dirs) { $parentOf[[string]$d[0]] = [string]$d[1] }
+$chain = @(); $cur = 'INSTALLFOLDER'
+while ($cur -and $parentOf.ContainsKey($cur) -and $chain.Count -lt 20) { $chain += $cur; $cur = $parentOf[$cur] }
+$chain += $cur
+Assert-True ($chain -contains 'LocalAppDataFolder') ('INSTALLFOLDER cuelga de LocalAppDataFolder (' + ($chain -join ' > ') + ')')
+Assert-True (-not ($chain | Where-Object { $_ -match 'ProgramFiles' })) 'INSTALLFOLDER no cuelga de ProgramFiles (no pide administrador)'
 $comps = Get-MsiRows $db 'SELECT `Component`, `Directory_`, `ComponentId` FROM `Component`' 3
 Assert-True (@($comps | Where-Object { $_[1] -ne 'INSTALLFOLDER' }).Count -eq 0 -and @($comps).Count -eq 1) 'un solo componente, en INSTALLFOLDER (carpeta del programa)'
 Assert-True ($comps[0][2] -eq "{$($guids[$Arch])}") "GUID del componente de $Arch = $($comps[0][2])"
@@ -146,7 +155,7 @@ Assert-True ($sz['dConnector.exe'] -eq (Get-Item $exePath).Length -and $sz['dCon
 $regs = Get-MsiRows $db 'SELECT `Root`, `Key` FROM `Registry`' 2
 Assert-True (@($regs | Where-Object { $_[0] -ne '1' -or $_[1] -notmatch '^Software\\Darkmelon\\dConnector$' }).Count -eq 0) 'el registro solo escribe HKCU\Software\Darkmelon\dConnector'
 $rf = Get-MsiRows $db 'SELECT `DirProperty`, `InstallMode` FROM `RemoveFile`' 2
-Assert-True (@($rf | Where-Object { $_[0] -ne 'INSTALLFOLDER' }).Count -eq 0) 'RemoveFile/RemoveFolder solo actúa sobre INSTALLFOLDER'
+Assert-True (@($rf | Where-Object { $_[0] -notin @('INSTALLFOLDER', 'UserProgramsFolder') }).Count -eq 0) 'RemoveFile/RemoveFolder solo actúa sobre INSTALLFOLDER y su carpeta Programs (solo si queda vacía)'
 $dlg = Get-MsiRows $db 'SELECT `Title` FROM `Dialog` WHERE `Dialog`=''WelcomeEulaDlg''' 1
 Write-Host "  info · título del diálogo de bienvenida: '$($dlg[0][0])'"
 $db = $null; [GC]::Collect(); [GC]::WaitForPendingFinalizers()

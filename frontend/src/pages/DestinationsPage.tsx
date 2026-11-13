@@ -4,6 +4,8 @@ import { Plus, Unplug } from "lucide-react";
 import { api } from "@/api";
 import type { ContactList, Destination } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { DestinationCardsSkeleton } from "@/pages/skeletons/zones";
 import DestinationCard from "@/components/destinations/DestinationCard";
 import DestinationForm from "@/components/destinations/DestinationForm";
 import { indexListNames } from "@/components/destinations/destinationModel";
@@ -17,6 +19,7 @@ export default function DestinationsPage() {
 
   const [items, setItems] = useState<Destination[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   // Listas de contactos, para nombrar el alcance de cada destino (`null` mientras no cargan).
   const [lists, setLists] = useState<ContactList[] | null>(null);
   // `undefined` = cerrado, `null` = nuevo, otro = editar.
@@ -25,8 +28,9 @@ export default function DestinationsPage() {
   const load = useCallback(async () => {
     try {
       setItems(await api.destinations.List());
+      setFailed(false);
     } catch {
-      /* el aviso ya salió */
+      setFailed(true); // el aviso ya salió; se conserva lo que hubiera
     } finally {
       setLoaded(true);
     }
@@ -92,7 +96,11 @@ export default function DestinationsPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {loaded && items.length === 0 ? (
+        {!loaded ? (
+          <DestinationCardsSkeleton />
+        ) : failed && items.length === 0 ? (
+          <LoadError what="los destinos" onRetry={() => void load()} />
+        ) : items.length === 0 ? (
           <EmptyState
             icon={Unplug}
             title="Sin destinos"

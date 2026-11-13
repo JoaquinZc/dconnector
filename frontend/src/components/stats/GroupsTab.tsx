@@ -1,7 +1,9 @@
-import { Loader2, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import { api } from "@/api";
 import type { Range } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { GroupsStatsSkeleton } from "@/pages/skeletons/zones";
 import { formatListTime } from "@/lib/format";
 import { useUI } from "@/store/ui";
 import RankList, { type RankItem } from "./RankList";
@@ -42,18 +44,15 @@ export function peopleItems(people: GroupsView["people"]): RankItem[] {
 
 /** Pestaña «Grupos»: totales, grupos más activos y personas más activas. */
 export default function GroupsTab({ range, accountIds }: Props) {
-  const { data, loading } = useStatsLoad<GroupsView>(
+  const { data, loading, failed, retry } = useStatsLoad<GroupsView>(
     () => api.stats.Groups(accountIds.length ? accountIds : null, range),
     readGroupsOverview,
     [range.days, range.from, range.to, accountIds.join(",")],
   );
 
   if (!data) {
-    return (
-      <div className="flex justify-center p-10 text-muted">
-        <Loader2 className="animate-spin" size={22} />
-      </div>
-    );
+    if (failed) return <LoadError what="las estadísticas de grupos" onRetry={retry} className="flex-1" />;
+    return <GroupsStatsSkeleton />;
   }
   if (!data.hasData) return <EmptyState icon={UsersRound} title="Sin actividad en grupos" className="flex-1" />;
 

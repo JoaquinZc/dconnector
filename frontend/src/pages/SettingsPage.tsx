@@ -3,6 +3,8 @@ import { useReloadOnReconnect } from "@/lib/useReconnect";
 import { Loader2 } from "lucide-react";
 import { api } from "@/api";
 import type { AppSettings } from "@/api/types";
+import LoadError from "@/components/common/LoadError";
+import { SettingsSectionSkeleton } from "@/pages/skeletons/zones";
 import AboutSection from "@/components/settings/AboutSection";
 import AutoDownloadSection from "@/components/settings/AutoDownloadSection";
 import ConnectionSection from "@/components/settings/ConnectionSection";
@@ -51,6 +53,7 @@ export default function SettingsPage() {
   const [version, setVersion] = useState("");
   const [dataDir, setDataDir] = useState("");
   const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -80,7 +83,7 @@ export default function SettingsPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [attempt]);
 
   // Tras reconectar se vuelve a leer lo guardado; lo que la persona está editando no se pisa.
   useReloadOnReconnect(() => {
@@ -135,18 +138,12 @@ export default function SettingsPage() {
     if (saved) setForm(saved);
   };
 
-  if (!loaded || !form) {
-    return (
-      <div className="flex h-full flex-col">
-        <header className="border-b border-line bg-panel px-6 py-3">
-          <h1 className="text-lg font-semibold">Ajustes</h1>
-        </header>
-        <div className="flex flex-1 items-center justify-center text-muted">
-          {!loaded ? <Loader2 className="animate-spin" size={24} /> : <p>No se pudieron leer los ajustes</p>}
-        </div>
-      </div>
-    );
-  }
+  // El marco (cabecera y secciones) se pinta ya; solo el contenido espera a los ajustes.
+  const ready = loaded && !!form;
+  const retry = () => {
+    setLoaded(false);
+    setAttempt((n) => n + 1);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -173,13 +170,19 @@ export default function SettingsPage() {
 
         <div className="min-w-0 flex-1 overflow-y-auto p-6">
           <div className="mx-auto max-w-2xl">
-            {section === "general" && <GeneralSection form={form} patch={patch} />}
-            {section === "connection" && <ConnectionSection />}
-            {section === "notifications" && <NotificationsSection form={form} patch={patch} />}
-            {section === "downloads" && <AutoDownloadSection form={form} patch={patch} />}
-            {section === "campaigns" && <CampaignsSection form={form} patch={patch} />}
-            {section === "data" && <DataSection form={form} patch={patch} dataDir={dataDir} />}
-            {section === "about" && <AboutSection version={version} />}
+            {!loaded && <SettingsSectionSkeleton section={section} />}
+            {loaded && !form && <LoadError what="los ajustes" onRetry={retry} />}
+            {ready && (
+              <>
+                {section === "general" && <GeneralSection form={form} patch={patch} />}
+                {section === "connection" && <ConnectionSection />}
+                {section === "notifications" && <NotificationsSection form={form} patch={patch} />}
+                {section === "downloads" && <AutoDownloadSection form={form} patch={patch} />}
+                {section === "campaigns" && <CampaignsSection form={form} patch={patch} />}
+                {section === "data" && <DataSection form={form} patch={patch} dataDir={dataDir} />}
+                {section === "about" && <AboutSection version={version} />}
+              </>
+            )}
           </div>
         </div>
       </div>

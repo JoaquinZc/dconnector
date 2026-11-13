@@ -6,7 +6,7 @@ vi.mock("@/store/app", () => ({ startApp: vi.fn(() => () => undefined) }));
 vi.mock("@/components/layout/Shell", () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid="shell">{children}</div>,
 }));
-vi.mock("@/pages/registry", () => ({ PageView: () => <div>Página</div> }));
+vi.mock("@/pages/registry", () => ({ PageView: () => <div>Página</div>, preloadPages: () => undefined }));
 vi.mock("@/components/common/NotifyNotice", () => ({ default: () => null }));
 
 import { ApiError } from "@/api/http";

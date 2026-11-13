@@ -1,5 +1,6 @@
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import type { ContactList } from "@/api/types";
+import { ListRowsSkeleton } from "@/pages/skeletons/zones";
 import { cx } from "@/lib/cx";
 import { sortLists } from "./contactModel";
 
@@ -7,6 +8,8 @@ interface Props {
   lists: ContactList[];
   /** Id de la lista elegida; "" = todos. */
   selected: string;
+  /** Las listas aún no llegaron: se pintan esqueletos en vez de «Sin listas». */
+  loading?: boolean;
   onSelect: (id: string) => void;
   onCreate: () => void;
   onEdit: (l: ContactList) => void;
@@ -14,7 +17,7 @@ interface Props {
 }
 
 /** Columna izquierda: «Todos» y las listas, con crear, renombrar/color y borrar. */
-export default function ListsSidebar({ lists, selected, onSelect, onCreate, onEdit, onDelete }: Props) {
+export default function ListsSidebar({ lists, selected, loading = false, onSelect, onCreate, onEdit, onDelete }: Props) {
   return (
     <aside className="flex w-[260px] shrink-0 flex-col border-r border-line bg-panel" aria-label="Listas">
       <div className="flex items-center gap-2 px-4 py-3">
@@ -73,7 +76,8 @@ export default function ListsSidebar({ lists, selected, onSelect, onCreate, onEd
             </button>
           </div>
         ))}
-        {lists.length === 0 && <p className="px-3 py-4 text-sm text-muted">Sin listas</p>}
+        {loading && lists.length === 0 && <ListRowsSkeleton />}
+        {!loading && lists.length === 0 && <p className="px-3 py-4 text-sm text-muted">Sin listas</p>}
       </div>
     </aside>
   );

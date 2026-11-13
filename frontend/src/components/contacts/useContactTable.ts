@@ -22,6 +22,8 @@ export interface ContactTable {
   total: number;
   loading: boolean;
   loaded: boolean;
+  /** La última primera carga falló y no hay filas que enseñar. */
+  failed: boolean;
   more: boolean;
   loadMore: () => void;
   reload: () => Promise<void>;
@@ -35,6 +37,7 @@ export function useContactTable(query: ContactQuery): ContactTable {
   const [state, setState] = useState<TableState>(EMPTY_TABLE);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const seq = useRef(0);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -48,8 +51,10 @@ export function useContactTable(query: ContactQuery): ContactTable {
       const page = await api.contacts.List(buildFilter(query, 0));
       if (mine !== seq.current) return;
       setState(firstPage(page?.contacts, page?.total ?? 0));
+      setFailed(false);
     } catch {
-      /* el aviso ya salió */
+      // el aviso ya salió; se conserva lo que hubiera
+      if (mine === seq.current) setFailed(true);
     } finally {
       if (mine === seq.current) {
         loadingRef.current = false;
@@ -88,6 +93,7 @@ export function useContactTable(query: ContactQuery): ContactTable {
     total: state.total,
     loading,
     loaded,
+    failed,
     more: hasMore(state),
     loadMore,
     reload: fetchFirst,

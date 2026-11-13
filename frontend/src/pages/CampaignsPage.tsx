@@ -8,11 +8,13 @@ import PacingModal from "@/components/campaigns/PacingModal";
 import { sortCampaigns } from "@/components/campaigns/campaignModel";
 import { useCampaigns } from "@/components/campaigns/useCampaignApi";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { CampaignRowsSkeleton } from "@/pages/skeletons/zones";
 import { useAccounts } from "@/store/accounts";
 
 export default function CampaignsPage() {
   const views = useAccounts((s) => s.views);
-  const { campaigns, live, loaded, reload } = useCampaigns();
+  const { campaigns, live, loaded, failed, reload } = useCampaigns();
 
   const [detailId, setDetailId] = useState<string | null>(null);
   // `undefined` = cerrado, `null` = nueva, otro = editar.
@@ -69,7 +71,11 @@ export default function CampaignsPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {loaded && sorted.length === 0 ? (
+        {!loaded ? (
+          <CampaignRowsSkeleton />
+        ) : failed && sorted.length === 0 ? (
+          <LoadError what="las campañas" onRetry={() => void reload()} />
+        ) : sorted.length === 0 ? (
           <EmptyState
             icon={Megaphone}
             title="Sin campañas"

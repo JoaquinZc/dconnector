@@ -7,6 +7,7 @@ import { useAccounts } from "@/store/accounts";
 import { useChat } from "@/store/chat";
 import { useInbox } from "@/store/inbox";
 import { useUI } from "@/store/ui";
+import { usePageActive } from "@/lib/pageActive";
 import type { Chat, Message } from "../api/core/model/models.js";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ContactInfoPanel from "@/components/chat/ContactInfoPanel";
@@ -97,7 +98,9 @@ export default function ChatsPage() {
   }, []);
 
   // el servicio de notificaciones sabe qué chat se está viendo (y si la ventana tiene el foco)
-  useNotifyFocus(chatKey);
+  // Oculta (otra página a la vista) no hay chat abierto: ni se marca leído ni se suprimen avisos.
+  const active = usePageActive();
+  useNotifyFocus(active ? chatKey : null);
 
   // marcar leído al abrir (y mientras lleguen mensajes) si la ventana tiene foco
   const unreadCount = chat?.unreadCount ?? 0;
@@ -107,7 +110,7 @@ export default function ChatsPage() {
       markedFor.current = chatKey;
       void api.messaging.MarkRead(chatKey).catch(() => undefined);
     }
-  }, [chatKey, focused, unreadCount]);
+  }, [chatKey, focused, active, unreadCount]);
 
   // ventana estrecha: el panel de información se pliega
   useEffect(() => {

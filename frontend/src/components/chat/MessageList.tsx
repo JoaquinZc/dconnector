@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown } from "lucide-react";
+import { SkeletonBubbles } from "@/components/common/Skeleton";
 import type { TimelineItem } from "./timeline";
 
 export interface ScrollTarget {
@@ -142,9 +143,7 @@ export default function MessageList({
     <div className="relative min-h-0 flex-1">
       <div ref={parentRef} onScroll={onScroll} className="h-full overflow-y-auto overflow-x-hidden py-2" data-testid="message-list">
         {items.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-[13px] text-[var(--muted)]">
-            {loading ? "Cargando…" : ""}
-          </div>
+          loading ? <SkeletonBubbles /> : <div className="h-full" />
         ) : (
           <div style={{ height: total, position: "relative", width: "100%" }}>
             {v.getVirtualItems().map((vi) => (

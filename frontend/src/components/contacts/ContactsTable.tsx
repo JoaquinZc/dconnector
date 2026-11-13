@@ -6,16 +6,20 @@ import Avatar from "@/components/common/Avatar";
 import ChannelIcon from "@/components/common/ChannelIcon";
 import { channelName } from "@/lib/channels";
 import { cx } from "@/lib/cx";
+import { ContactRowsSkeleton } from "@/pages/skeletons/zones";
 import { channelsOf, contactTitle, sourceOf } from "./contactModel";
 
 export const ROW_HEIGHT = 56;
-const COLUMNS = "minmax(200px,2.2fr) 150px 110px minmax(120px,1.6fr) minmax(120px,1.6fr)";
+export const CONTACT_COLUMNS = "minmax(200px,2.2fr) 150px 110px minmax(120px,1.6fr) minmax(120px,1.6fr)";
+const COLUMNS = CONTACT_COLUMNS;
 
 interface Props {
   rows: Contact[];
   lists: ContactList[];
   selectedId: string | null;
   loading: boolean;
+  /** Primera carga en curso: la cabecera de la tabla se pinta y las filas son esqueletos. */
+  initialLoading?: boolean;
   more: boolean;
   onLoadMore: () => void;
   onOpen: (c: Contact) => void;
@@ -28,7 +32,7 @@ function Chips({ children, empty }: { children: React.ReactNode[]; empty?: boole
 }
 
 /** Tabla virtualizada de contactos con carga de la página siguiente al acercarse al final. */
-export default function ContactsTable({ rows, lists, selectedId, loading, more, onLoadMore, onOpen, onTag }: Props) {
+export default function ContactsTable({ rows, lists, selectedId, loading, initialLoading = false, more, onLoadMore, onOpen, onTag }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const byId = new Map(lists.map((l) => [l.id, l]));
 
@@ -60,6 +64,7 @@ export default function ContactsTable({ rows, lists, selectedId, loading, more, 
         <span role="columnheader">Etiquetas</span>
       </div>
       <div ref={parentRef} className="min-h-0 flex-1 overflow-y-auto bg-panel" data-testid="contacts-scroll">
+        {initialLoading && <ContactRowsSkeleton />}
         <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
           {items.map((vi) => {
             const c = rows[vi.index];
@@ -150,7 +155,7 @@ export default function ContactsTable({ rows, lists, selectedId, loading, more, 
             );
           })}
         </div>
-        {loading && <div className="py-3 text-center text-xs text-muted">Cargando…</div>}
+        {loading && !initialLoading && <div className="py-3 text-center text-xs text-muted">Cargando…</div>}
       </div>
     </div>
   );

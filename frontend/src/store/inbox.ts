@@ -24,6 +24,8 @@ interface InboxState {
   order: string[];
   filter: ChatFilter;
   loading: boolean;
+  /** Ya terminó la primera carga (con datos o con error): antes de eso la lista pinta esqueletos, no «Sin chats». */
+  loaded: boolean;
   hasMore: boolean;
   unread: UnreadState;
 
@@ -57,6 +59,7 @@ export const useInbox = create<InboxState>((set, get) => ({
   order: [],
   filter: DEFAULT_FILTER,
   loading: false,
+  loaded: false,
   hasMore: true,
   unread: { total: 0, byAccount: {} },
 
@@ -77,9 +80,10 @@ export const useInbox = create<InboxState>((set, get) => ({
         order: sortKeys(chats),
         hasMore: page.length >= (get().filter.limit || PAGE_SIZE),
         loading: false,
+        loaded: true,
       });
     } catch {
-      if (my === seq) set({ loading: false });
+      if (my === seq) set({ loading: false, loaded: true });
     }
   },
 

@@ -29,8 +29,12 @@
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
     <ui:WixUI Id="WixUI_Minimal" />
 
-    <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="INSTALLFOLDER" Name="dConnector" />
+    <!-- Instalación por usuario: %LOCALAPPDATA%\Programs\dConnector, sin administrador. NO usar ProgramFiles6432Folder:
+         en un MSI de 64 bits apunta a C:\Program Files (Windows solo redirige la carpeta de 32 bits) y exige permisos. -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="UserProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="dConnector" />
+      </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder" />
     <StandardDirectory Id="DesktopFolder" />
@@ -53,6 +57,7 @@
         <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="dConnector"
                   Target="[#dConnectorExe]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" />
         <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+        <RemoveFolder Id="RemoveUserProgramsFolder" Directory="UserProgramsFolder" On="uninstall" />
       </Component>
     </ComponentGroup>
 

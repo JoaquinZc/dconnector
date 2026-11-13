@@ -4,6 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageSquarePlus } from "lucide-react";
 import { api } from "@/api";
 import EmptyState from "@/components/common/EmptyState";
+import { ChatRowsSkeleton } from "@/pages/skeletons/zones";
 import { useInbox } from "@/store/inbox";
 import type { Chat } from "../../api/core/model/models.js";
 import ChatRow, { ROW_HEIGHT } from "./ChatRow";
@@ -46,6 +47,7 @@ export default function ChatList({
   const order = useInbox((s) => s.order);
   const chats = useInbox((s) => s.chats);
   const loading = useInbox((s) => s.loading);
+  const loaded = useInbox((s) => s.loaded);
   const filter = useInbox((s) => s.filter);
   const hasMore = useInbox((s) => s.hasMore);
   const loadMore = useInbox((s) => s.loadMore);
@@ -69,6 +71,11 @@ export default function ChatList({
 
   const closeMenu = useCallback(() => setMenu(null), []);
 
+  if (order.length === 0 && (!loaded || loading)) {
+    // Primera carga (o cambio de filtro sin nada que enseñar): esqueleto con la forma de las filas, nunca «Sin chats».
+    return <ChatRowsSkeleton />;
+  }
+
   if (order.length === 0) {
     // Sin ninguna conversación todavía (pestaña «Todos», sin búsqueda): se explica cómo empezar.
     const noActivityYet = !loading && (filter.tab || "all") === "all" && !(filter.query ?? "").trim();
@@ -89,9 +96,7 @@ export default function ChatList({
       );
     }
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center text-[14px] text-[var(--muted)]">
-        {loading ? "Cargando…" : "Sin chats"}
-      </div>
+      <div className="flex flex-1 items-center justify-center p-8 text-center text-[14px] text-[var(--muted)]">Sin chats</div>
     );
   }
 

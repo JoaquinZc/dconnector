@@ -29,7 +29,7 @@ beforeEach(() => {
   svc.InboxService.ListChats.mockResolvedValue([]);
   svc.ContactsService.List.mockResolvedValue({ contacts: [], total: 0 });
   useAccounts.setState({ views: {}, order: [], loaded: true });
-  useInbox.setState({ chats: {}, order: [], filter: DEFAULT_FILTER, loading: false, hasMore: false });
+  useInbox.setState({ chats: {}, order: [], filter: DEFAULT_FILTER, loading: false, loaded: true, hasMore: false });
 });
 afterEach(cleanup);
 
@@ -53,11 +53,13 @@ describe("lista de chats vacía", () => {
     expect(screen.getByText("Sin chats")).toBeInTheDocument();
   });
 
-  it("cargando no muestra el mensaje de «aún no hay»", () => {
-    useInbox.setState({ loading: true });
+  it("cargando muestra esqueletos y no el mensaje de «aún no hay»", () => {
+    useInbox.setState({ loading: true, loaded: false });
     render(<ChatList selectedKey={null} accounts={{}} onOpen={vi.fn()} onNewChat={vi.fn()} />);
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Cargando" })).toBeInTheDocument();
+    expect(screen.queryByText("Cargando…")).toBeNull();
     expect(screen.queryByText("Aún no hay conversaciones")).toBeNull();
+    expect(screen.queryByText("Sin chats")).toBeNull();
   });
 });
 

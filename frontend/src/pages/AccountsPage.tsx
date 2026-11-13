@@ -7,6 +7,7 @@ import AddAccountWizard from "@/components/accounts/AddAccountWizard";
 import EditAccountModal from "@/components/accounts/EditAccountModal";
 import RelinkModal from "@/components/accounts/RelinkModal";
 import EmptyState from "@/components/common/EmptyState";
+import { AccountsGridSkeleton } from "@/pages/skeletons/zones";
 import { moveBefore, useAccounts } from "@/store/accounts";
 import { useUI } from "@/store/ui";
 
@@ -15,6 +16,7 @@ export default function AccountsPage() {
   const order = useAccounts((s) => s.order);
   const reorder = useAccounts((s) => s.reorder);
   const load = useAccounts((s) => s.load);
+  const loaded = useAccounts((s) => s.loaded);
   const confirm = useUI((s) => s.confirm);
   const toast = useUI((s) => s.toast);
 
@@ -92,7 +94,9 @@ export default function AccountsPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {shown.length === 0 ? (
+        {shown.length === 0 && !loaded ? (
+          <AccountsGridSkeleton />
+        ) : shown.length === 0 ? (
           <EmptyState
             icon={Smartphone}
             title="Sin cuentas"
@@ -104,7 +108,7 @@ export default function AccountsPage() {
             }
           />
         ) : (
-          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))" }}>
             {shown.map((id) => {
               const view = views[id];
               if (!view) return null;

@@ -4,6 +4,8 @@ import { FileSpreadsheet, GitMerge, Loader2, Plus, RefreshCw, Search, Smartphone
 import { api } from "@/api";
 import type { Contact, ContactList } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { Skeleton } from "@/components/common/Skeleton";
 import ContactPanel from "@/components/contacts/ContactPanel";
 import ContactsTable from "@/components/contacts/ContactsTable";
 import ImportCsvModal from "@/components/contacts/ImportCsvModal";
@@ -44,6 +46,7 @@ export default function ContactsPage() {
   const accountsLoaded = useAccounts((s) => s.loaded);
 
   const [lists, setLists] = useState<ContactList[]>([]);
+  const [listsLoaded, setListsLoaded] = useState(false);
   const [listId, setListId] = useState("");
   const [tag, setTag] = useState("");
   const [source, setSource] = useState<SourceFilter>("all");
@@ -70,6 +73,8 @@ export default function ContactsPage() {
       setLists(await api.contacts.Lists());
     } catch {
       /* el aviso ya salió */
+    } finally {
+      setListsLoaded(true);
     }
   }, []);
 
@@ -160,6 +165,7 @@ export default function ContactsPage() {
       <ListsSidebar
         lists={lists}
         selected={listId}
+        loading={!listsLoaded}
         onSelect={setListId}
         onCreate={() => setModal({ kind: "list", list: null })}
         onEdit={(l) => setModal({ kind: "list", list: l })}
@@ -169,9 +175,13 @@ export default function ContactsPage() {
       <main className="flex min-w-0 flex-1 flex-col bg-panel">
         <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-6 py-3">
           <h1 className="text-lg font-semibold">Contactos</h1>
-          <span className="text-sm text-muted" data-testid="contacts-total" aria-live="polite">
-            {totalText}
-          </span>
+          {table.loaded ? (
+            <span className="text-sm text-muted" data-testid="contacts-total" aria-live="polite">
+              {totalText}
+            </span>
+          ) : (
+            <Skeleton className="h-4 w-20" />
+          )}
           <div className="relative ml-4 min-w-[180px] max-w-sm flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
@@ -254,7 +264,9 @@ export default function ContactsPage() {
           </div>
         )}
 
-        {table.loaded && rows.length === 0 && (source === "all" || !table.more) ? (
+        {table.loaded && table.failed && table.rows.length === 0 ? (
+          <LoadError what="los contactos" onRetry={() => void table.reload()} className="flex-1" />
+        ) : table.loaded && rows.length === 0 && (source === "all" || !table.more) ? (
           <EmptyState
             icon={Users}
             title={activeFilter ? "Sin resultados" : "Sin contactos"}
@@ -287,6 +299,7 @@ export default function ContactsPage() {
             lists={lists}
             selectedId={selected?.id ?? null}
             loading={table.loading}
+            initialLoading={!table.loaded}
             more={table.more}
             onLoadMore={table.loadMore}
             onOpen={(c) => setSelected(c)}

@@ -6,6 +6,8 @@ export interface StatsLoad<T> {
   data: T | null;
   loading: boolean;
   failed: boolean;
+  /** Vuelve a pedir lo mismo (botón «Reintentar»). */
+  retry: () => void;
 }
 
 /**
@@ -13,7 +15,8 @@ export interface StatsLoad<T> {
  * la petición (rango, cuentas…): cuando cambian, se vuelve a pedir.
  */
 export function useStatsLoad<T>(load: () => Promise<unknown>, read: (raw: unknown) => T, deps: unknown[]): StatsLoad<T> {
-  const [state, setState] = useState<StatsLoad<T>>({ data: null, loading: true, failed: false });
+  const [state, setState] = useState<Omit<StatsLoad<T>, "retry">>({ data: null, loading: true, failed: false });
+  const [attempt, setAttempt] = useState(0);
   const seq = useRef(0);
   const loadRef = useRef(load);
   const readRef = useRef(read);
@@ -36,7 +39,7 @@ export function useStatsLoad<T>(load: () => Promise<unknown>, read: (raw: unknow
       seq.current++;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, attempt]);
 
-  return state;
+  return { ...state, retry: () => setAttempt((n) => n + 1) };
 }

@@ -4,6 +4,9 @@ import { CalendarClock, Plus } from "lucide-react";
 import { api } from "@/api";
 import type { Scheduled } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import LoadError from "@/components/common/LoadError";
+import { Skeleton } from "@/components/common/Skeleton";
+import { ScheduledTableSkeleton } from "@/pages/skeletons/zones";
 import ScheduledForm from "@/components/scheduled/ScheduledForm";
 import ScheduledTable from "@/components/scheduled/ScheduledTable";
 import {
@@ -28,6 +31,7 @@ export default function ScheduledPage() {
 
   const [items, setItems] = useState<Scheduled[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<ScheduledFilter>("all");
   const [busyId, setBusyId] = useState("");
   // `undefined` = cerrado, `null` = nuevo, otro = editar.
@@ -36,8 +40,9 @@ export default function ScheduledPage() {
   const load = useCallback(async () => {
     try {
       setItems(await api.scheduled.List(0, Date.now() + TEN_YEARS));
+      setFailed(false);
     } catch {
-      /* el aviso ya salió */
+      setFailed(true); // el aviso ya salió; se conserva lo que hubiera
     } finally {
       setLoaded(true);
     }
@@ -121,9 +126,13 @@ export default function ScheduledPage() {
               )}
             >
               {f.label}
-              <span className="ml-1.5 text-xs text-muted" data-testid={`count-${f.id}`}>
-                {counts[f.id]}
-              </span>
+              {loaded ? (
+                <span className="ml-1.5 text-xs text-muted" data-testid={`count-${f.id}`}>
+                  {counts[f.id]}
+                </span>
+              ) : (
+                <Skeleton className="ml-1.5 inline-block h-3 w-3 align-middle" />
+              )}
             </button>
           ))}
         </div>
@@ -135,7 +144,11 @@ export default function ScheduledPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        {loaded && shown.length === 0 ? (
+        {!loaded ? (
+          <ScheduledTableSkeleton />
+        ) : failed && items.length === 0 ? (
+          <LoadError what="los programados" onRetry={() => void load()} />
+        ) : shown.length === 0 ? (
           <EmptyState
             icon={CalendarClock}
             title={items.length === 0 ? "Sin programados" : "Nada con este estado"}

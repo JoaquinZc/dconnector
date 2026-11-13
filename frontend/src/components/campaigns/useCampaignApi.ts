@@ -42,6 +42,7 @@ export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [live, setLive] = useState<Record<string, CampaignLive>>({});
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const ref = useRef<Campaign[]>([]);
 
   const reload = useCallback(async () => {
@@ -49,8 +50,9 @@ export function useCampaigns() {
       const list = await api.campaigns.List();
       ref.current = list;
       setCampaigns(list);
+      setFailed(false);
     } catch {
-      /* el aviso ya salió */
+      setFailed(true); // el aviso ya salió; se conserva lo que hubiera
     } finally {
       setLoaded(true);
     }
@@ -76,7 +78,7 @@ export function useCampaigns() {
     });
   }, [reload]);
 
-  return { campaigns, live, loaded, reload };
+  return { campaigns, live, loaded, failed, reload };
 }
 
 interface ReviewState {

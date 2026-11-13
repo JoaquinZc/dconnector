@@ -1,6 +1,7 @@
 import { CircleDot, Eye, Plus } from "lucide-react";
 import type { Status } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import { MyStatusesGridSkeleton } from "@/pages/skeletons/zones";
 import StatusPreview from "./StatusPreview";
 import { formatAgo, formatExpiry } from "./statusModel";
 
@@ -9,10 +10,15 @@ interface Props {
   canPost: boolean;
   onOpen: (s: Status) => void;
   onAdd: () => void;
+  /** Aún no llegaron: tarjetas de esqueleto en vez de «Sin estados». */
+  loading?: boolean;
 }
 
 /** Mis estados vigentes como tarjetas con su contador de vistas. */
-export default function MyStatusesGrid({ statuses, canPost, onOpen, onAdd }: Props) {
+export default function MyStatusesGrid({ statuses, canPost, onOpen, onAdd, loading = false }: Props) {
+  if (loading && statuses.length === 0) {
+    return <MyStatusesGridSkeleton />;
+  }
   if (statuses.length === 0) {
     return (
       <EmptyState

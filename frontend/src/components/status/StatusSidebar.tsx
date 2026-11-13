@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronRight, EyeOff, Plus } from "lucide-react";
 import type { StatusAuthor } from "@/api/types";
 import Avatar from "@/components/common/Avatar";
+import { StatusListSkeleton } from "@/pages/skeletons/zones";
 import { channelName } from "@/lib/channels";
 import { cx } from "@/lib/cx";
 import { ChannelBadge, ChannelGlyph, channelVar } from "./ChannelGlyph";
@@ -30,6 +31,8 @@ interface Props {
   onSelect: (a: StatusAuthor) => void;
   /** Canales sin estados en dConnector (Instagram, Messenger) de los que hay cuentas. */
   unsupported: string[];
+  /** Los autores aún no llegaron: esqueleto en vez de «Sin estados». */
+  loading?: boolean;
 }
 
 function AuthorRow({ a, selected, onClick }: { a: StatusAuthor; selected: boolean; onClick: () => void }) {
@@ -94,6 +97,7 @@ export default function StatusSidebar({
   selectedKey,
   onSelect,
   unsupported,
+  loading = false,
 }: Props) {
   const [closed, setClosed] = useState<Record<string, boolean>>({});
 
@@ -204,7 +208,8 @@ export default function StatusSidebar({
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-y-auto" data-testid="status-list">
-        {sections.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Sin estados</p>}
+        {loading && sections.length === 0 && <StatusListSkeleton />}
+        {!loading && sections.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Sin estados</p>}
         {sections.map((c) => {
           const open = !closed[c.channel];
           const Chev = open ? ChevronDown : ChevronRight;

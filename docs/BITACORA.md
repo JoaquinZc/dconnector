@@ -452,3 +452,13 @@ Cuatro revisores independientes (R1 seguridad del servidor, R2 concurrencia y da
 
 **No probado:** ejecución en arm64 y en Linux (el servidor de Linux x64 sí se ejecutó en WSL durante la revisión R4); instalación real del MSI (actualizar encima de 0.2.x, desinstalar conservando datos); ventana Wails real,
 CSP y TLS autofirmado en WebView2; servicio de Windows real; Docker (el demonio estaba apagado); escritorio x86 (no arranca, ver arriba); canales reales (WhatsApp, Telegram, Messenger, Instagram).
+
+### 0.3.1 (en preparación) · MSI por usuario de verdad, carga sin parpadeo (13-11-2026)
+
+- **Bug del MSI (desde la 0.1.0, visto al instalarlo por primera vez en una máquina real):** el instalador intentaba escribir en `C:\Program Files\dConnector` y pedía administrador. `Scope="perUser"` no basta:
+  `ProgramFiles6432Folder` en un MSI de 64 bits apunta a `Program Files` (Windows solo redirige a `%LOCALAPPDATA%\Programs` la carpeta de 32 bits). Hasta entonces el MSI solo se había comprobado leyendo sus tablas.
+  Arreglo: `LocalAppDataFolder\Programs\dConnector` (con `RemoveFolder` de ambas carpetas). `scripts/msi.ps1` comprueba ahora que `INSTALLFOLDER` cuelga de `LocalAppDataFolder` y no de `ProgramFiles`.
+  **Prueba real:** instalación silenciosa por usuario (código 0, archivos en `%LOCALAPPDATA%\Programs\dConnector`, acceso directo en el menú Inicio, nada en Program Files) y desinstalación (código 0, carpeta y acceso directo
+  eliminados, `%APPDATA%\dConnector` intacta: 36 archivos, 238,9 MB). Los MSI de la Release 0.3.0 tienen este defecto; la 0.3.1 lo corrige.
+- **Parpadeo al abrir una pestaña por primera vez:** precarga inmediata del código de las 9 páginas, páginas visitadas en memoria (Programados y Ajustes se desmontan por tener temporizador propio; Chats sabe cuándo está oculta
+  para no marcar leído ni suprimir avisos), y esqueletos a la medida de cada página (`frontend/src/pages/skeletons/`), usados como fallback de carga y como estado de primera carga dentro de cada página.

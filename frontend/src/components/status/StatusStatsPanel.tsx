@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { StatusStatsSkeleton } from "@/pages/skeletons/zones";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/api";
 import { cx } from "@/lib/cx";
@@ -111,9 +111,7 @@ export default function StatusStatsPanel({ accountId }: Props) {
       </div>
 
       {loading && !stats ? (
-        <div className="flex justify-center p-8 text-muted">
-          <Loader2 className="animate-spin" size={22} />
-        </div>
+        <StatusStatsSkeleton />
       ) : (
         <>
           <div className="flex gap-3">

@@ -1,5 +1,5 @@
 # dconnector-server: imagen mínima y sin privilegios. Se construye desde la RAÍZ del repositorio:
-#   docker build -f deploy/Dockerfile --build-arg VERSION=0.3.0 -t dconnector-server .
+#   docker build -f deploy/Dockerfile --build-arg VERSION=0.3.1 -t dconnector-server .
 ARG GO_VERSION=1.27.4
 
 FROM golang:${GO_VERSION} AS build

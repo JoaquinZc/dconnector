@@ -33,6 +33,8 @@ export function applyStatusView(map: StatusMap, v: StatusView): StatusMap {
 
 interface StatusesState {
   authors: StatusAuthor[];
+  /** Ya terminó la primera carga de autores (con datos o con error). */
+  authorsLoaded: boolean;
   /** Estados vigentes cargados, por clave. */
   statuses: StatusMap;
 
@@ -48,14 +50,15 @@ let authorsAccounts: string[] | undefined;
 
 export const useStatuses = create<StatusesState>((set, get) => ({
   authors: [],
+  authorsLoaded: false,
   statuses: {},
 
   loadAuthors: async (accountIds) => {
     authorsAccounts = accountIds;
     try {
-      set({ authors: await api.statuses.Authors(accountIds ?? []) });
+      set({ authors: await api.statuses.Authors(accountIds ?? []), authorsLoaded: true });
     } catch {
-      /* el aviso ya salió */
+      set({ authorsLoaded: true }); // el aviso ya salió
     }
   },
 

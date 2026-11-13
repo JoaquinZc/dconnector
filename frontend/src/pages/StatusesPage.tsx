@@ -3,6 +3,8 @@ import { CircleDot, Plus } from "lucide-react";
 import { api, onEvent } from "@/api";
 import type { CapSet, Status, StatusAuthor } from "@/api/types";
 import EmptyState from "@/components/common/EmptyState";
+import StatusesSkeleton from "@/pages/skeletons/StatusesSkeleton";
+import { StoryViewerSkeleton } from "@/pages/skeletons/zones";
 import MyStatusDetail from "@/components/status/MyStatusDetail";
 import MyStatusesGrid from "@/components/status/MyStatusesGrid";
 import PostStatusModal from "@/components/status/PostStatusModal";
@@ -56,6 +58,8 @@ export default function StatusesPage() {
   const order = useAccounts((s) => s.order);
   const authors = useStatuses((s) => s.authors);
   const loadAuthors = useStatuses((s) => s.loadAuthors);
+  const authorsLoaded = useStatuses((s) => s.authorsLoaded);
+  const accountsLoaded = useAccounts((s) => s.loaded);
 
   // Todas las cuentas habilitadas con estados (WhatsApp, Telegram…): se ven juntas.
   const accounts = useMemo(
@@ -184,6 +188,8 @@ export default function StatusesPage() {
 
   // Mis estados vigentes, por cuenta.
   const [mine, setMine] = useState<Record<string, Status[]>>({});
+  // Cuentas cuyos estados ya se pidieron al menos una vez (con datos o con error): antes, esqueletos.
+  const [mineDone, setMineDone] = useState<Record<string, boolean>>({});
   const loadMine = useCallback(async (only?: string) => {
     const targets = only ? [only] : idsRef.current;
     const now = Date.now();
@@ -199,6 +205,11 @@ export default function StatusesPage() {
     setMine((prev) => {
       const next = { ...prev };
       for (const r of res) if (r) next[r[0]] = r[1];
+      return next;
+    });
+    setMineDone((prev) => {
+      const next = { ...prev };
+      for (const id of targets) next[id] = true;
       return next;
     });
   }, []);
@@ -229,6 +240,8 @@ export default function StatusesPage() {
   };
 
   if (accounts.length === 0) {
+    // Cuentas aún sin llegar: el mismo marco que tendrá la página (columna de estados y visor), con esqueletos.
+    if (!accountsLoaded && order.length === 0) return <StatusesSkeleton />;
     return (
       <div className="flex h-full flex-col">
         <header className="border-b border-line bg-panel px-6 py-3">
@@ -238,6 +251,8 @@ export default function StatusesPage() {
       </div>
     );
   }
+
+  const loadingAuthors = !authorsLoaded;
 
   const accountChips =
     accounts.length > 1 ? (
@@ -284,6 +299,7 @@ export default function StatusesPage() {
         selectedKey={activeKey}
         onSelect={pick}
         unsupported={unsupported}
+        loading={loadingAuthors}
       />
 
       <main className="flex min-w-0 flex-1 flex-col bg-bg" aria-label="Visor de estados">
@@ -316,7 +332,9 @@ export default function StatusesPage() {
 
         {tab === "view" ? (
           <div role="tabpanel" aria-label="Ver estados" className="min-h-0 flex-1 bg-chat">
-            {activeKey && navAuthors.length > 0 ? (
+            {loadingAuthors ? (
+              <StoryViewerSkeleton />
+            ) : activeKey && navAuthors.length > 0 ? (
               <StoryViewer
                 inline
                 authors={navAuthors}
@@ -339,7 +357,7 @@ export default function StatusesPage() {
           <div role="tabpanel" aria-label={tab === "mine" ? "Mis estados" : "Estadísticas"} className="min-h-0 flex-1 overflow-y-auto p-6">
             {accountChips}
             {tab === "mine" ? (
-              <MyStatusesGrid statuses={mineList} canPost={!!mineCaps?.postStatus} onOpen={setDetail} onAdd={openPost} />
+              <MyStatusesGrid loading={!mineDone[mineId]} statuses={mineList} canPost={!!mineCaps?.postStatus} onOpen={setDetail} onAdd={openPost} />
             ) : (
               <StatusStatsPanel key={mineId} accountId={mineId} />
             )}

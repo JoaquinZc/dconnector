@@ -2,13 +2,28 @@ import type { Contact } from "@/api/types";
 import AccountPill from "@/components/common/AccountPill";
 import Avatar from "@/components/common/Avatar";
 import ChannelIcon from "@/components/common/ChannelIcon";
+import { Skeleton } from "@/components/common/Skeleton";
 import { useAccounts } from "@/store/accounts";
 import { contactTitle } from "./contactModel";
 
 /** Resumen de un contacto (para comparar al unir): nombre, teléfono, identidades y etiquetas. */
 export default function ContactPreview({ contact }: { contact: Contact | null }) {
   const views = useAccounts((s) => s.views);
-  if (!contact) return <p className="p-3 text-sm text-muted">Cargando…</p>;
+  if (!contact) {
+    return (
+      <div role="status" aria-label="Cargando" className="flex min-w-0 flex-col gap-2 p-3" data-testid="contact-preview-skeleton">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3.5 w-1/2" />
+          </div>
+        </div>
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-4/5" />
+      </div>
+    );
+  }
   const title = contactTitle(contact);
   const identities = contact.identities ?? [];
   const tags = contact.tags ?? [];
