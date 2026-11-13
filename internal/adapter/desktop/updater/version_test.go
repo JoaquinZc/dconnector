@@ -1,6 +1,9 @@
 package updater
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 func TestVersionCompare(t *testing.T) {
 	cases := []struct {
@@ -83,6 +86,9 @@ func TestArchName(t *testing.T) {
 }
 
 func TestDetectKind(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("usa rutas de Windows: el actualizador solo existe en el escritorio de Windows")
+	}
 	local := t.TempDir()
 	msiDir := local + `\Programs\dConnector`
 	mk := func(dir string) string {
