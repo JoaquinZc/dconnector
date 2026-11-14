@@ -2,7 +2,7 @@
 # Usa la imagen publicada en Docker Hub (linux/amd64 y linux/arm64); no necesita el código fuente.
 services:
   dconnector:
-    image: jassnoob/dconnector-server:0.3.2
+    image: jassnoob/dconnector-server:latest
     # Para construirla desde el código en vez de descargarla: ejecútelo desde la carpeta deploy/ del repositorio,
     # descomente este bloque y use  docker compose up -d --build
     # build:
