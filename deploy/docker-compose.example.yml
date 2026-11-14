@@ -1,13 +1,15 @@
-# Ejemplo para dconnector-server. Copie a docker-compose.yml, ajuste y ejecute:  docker compose up -d
-# Construir desde la raíz del repositorio (el contexto es «..»):  docker compose build
+# Ejemplo para dconnector-server. Copie este archivo solo a docker-compose.yml, ajuste y ejecute:  docker compose up -d
+# Usa la imagen publicada en Docker Hub (linux/amd64 y linux/arm64); no necesita el código fuente.
 services:
   dconnector:
     image: jassnoob/dconnector-server:0.3.2
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-      args:
-        VERSION: "0.3.2"
+    # Para construirla desde el código en vez de descargarla: ejecútelo desde la carpeta deploy/ del repositorio,
+    # descomente este bloque y use  docker compose up -d --build
+    # build:
+    #   context: ..
+    #   dockerfile: deploy/Dockerfile
+    #   args:
+    #     VERSION: "0.3.2"
     container_name: dconnector
     restart: unless-stopped
     ports:
