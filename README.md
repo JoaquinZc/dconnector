@@ -310,7 +310,7 @@ Dos requisitos del proxy, comunes a cualquiera:
 
 #### Caddy
 
-Caddy obtiene y renueva el certificado solo (el dominio debe apuntar al servidor y los puertos 80 y 443 estar abiertos). `Caddyfile`:
+**Con Docker Compose** hay un ejemplo completo y listo para copiar: [`deploy/docker-compose.caddy.example.yml`](deploy/docker-compose.caddy.example.yml) junto con [`deploy/Caddyfile.example`](deploy/Caddyfile.example) (servidor y Caddy en la misma red, sin publicar el puerto del servidor). En general, Caddy obtiene y renueva el certificado solo (el dominio debe apuntar al servidor y los puertos 80 y 443 estar abiertos). `Caddyfile`:
 
 ```caddyfile
 dconnector.ejemplo.com {

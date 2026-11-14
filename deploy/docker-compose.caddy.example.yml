@@ -1,0 +1,57 @@
+# dconnector-server + Caddy: HTTPS con certificado de Let's Encrypt, obtenido y renovado solo por Caddy.
+# Copie este archivo como docker-compose.yml y, JUNTO a él, el archivo Caddyfile.example como «Caddyfile»
+# (cambie ahí el dominio). Luego:  docker compose up -d
+#
+# Antes de arrancar:
+#   1. Un registro DNS «A» (y «AAAA» si usa IPv6) del dominio apuntando a la IP de este servidor.
+#   2. Los puertos 80 y 443 (TCP) abiertos hacia este servidor: Caddy los necesita para pedir el certificado.
+#   3. Si usa Cloudflare: deje el registro en «solo DNS» (nube gris) o use el modo SSL «Full (strict)».
+services:
+  dconnector:
+    image: jassnoob/dconnector-server:latest
+    container_name: dconnector
+    restart: unless-stopped
+    environment:
+      TZ: America/Guayaquil
+      DCONNECTOR_LISTEN: "0.0.0.0:8443"
+      DCONNECTOR_DATA: /data
+      # TLS lo pone Caddy; el servidor solo habla HTTP dentro de la red interna de Docker. El servidor exige
+      # «--insecure» para escuchar sin TLS fuera de loopback y lo recuerda en su registro cada minuto: es lo esperado aquí.
+      DCONNECTOR_NO_TLS: "true"
+      DCONNECTOR_INSECURE: "true"
+      DCONNECTOR_ADMIN_USER: admin
+      # Clave del administrador del primer arranque (mínimo 12 caracteres). Si no se define, se genera una y se imprime
+      # UNA vez:  docker compose logs dconnector
+      # DCONNECTOR_ADMIN_PASSWORD: "cambie-esta-clave-larga"
+    volumes:
+      - dconnector-data:/data
+    # Sin «ports»: el servidor NO queda publicado; solo Caddy lo alcanza por la red interna.
+    expose:
+      - "8443"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+
+  caddy:
+    image: caddy:2
+    container_name: dconnector-caddy
+    restart: unless-stopped
+    depends_on:
+      - dconnector
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # aquí guarda los certificados: no lo borre
+      - caddy-config:/config
+
+volumes:
+  dconnector-data:
+  caddy-data:
+  caddy-config:

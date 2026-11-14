@@ -1,0 +1,7 @@
+# Cambie el dominio por el suyo. Caddy obtiene y renueva el certificado solo.
+dc.ejemplo.com {
+	encode zstd gzip
+
+	# El WebSocket (/api/v1/events) y las subidas de archivos (hasta 100 MiB) funcionan sin más ajustes.
+	reverse_proxy dconnector:8443
+}
