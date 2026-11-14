@@ -1,6 +1,6 @@
 # dConnector · Manual de uso
 
-Versión 0.3.2 · para Windows 10 y 11 (x64 y arm64) · funciona en tu equipo sin cuentas de usuario, sin licencia y sin telemetría. Desde la 0.3.0 la aplicación puede usar el **servidor local** que lleva incluido o conectarse a un **servidor remoto** ([apartado 18](#18-conexión-local-o-servidor-remoto)).
+Versión 0.3.3 · para Windows 10 y 11 (x64 y arm64) · funciona en tu equipo sin cuentas de usuario, sin licencia y sin telemetría. Desde la 0.3.0 la aplicación puede usar el **servidor local** que lleva incluido o conectarse a un **servidor remoto** ([apartado 18](#18-conexión-local-o-servidor-remoto)).
 
 dConnector reúne varias cuentas de **WhatsApp, Telegram, Messenger e Instagram** en una sola bandeja de chats (con el aspecto de WhatsApp Web), publica y mira estados, hace campañas con envío prudente, programa mensajes, guarda tus contactos y listas, muestra estadísticas y puede **hablar con un servidor tuyo** (un bot, una IA, un almacén de mensajes) por un protocolo propio.
 

@@ -9,7 +9,7 @@ services:
     #   context: ..
     #   dockerfile: deploy/Dockerfile
     #   args:
-    #     VERSION: "0.3.2"
+    #     VERSION: "0.3.3"
     container_name: dconnector
     restart: unless-stopped
     ports:
