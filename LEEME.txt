@@ -1,4 +1,4 @@
-﻿dConnector 0.3.3 · LÉEME
+﻿dConnector 0.3.4 · LÉEME
 
 Abre dConnector.exe para empezar (la versión portable no necesita instalación).
 Tus datos (cuentas, chats y ajustes) se guardan en %APPDATA%\dConnector si lo instalaste con el MSI, y en la carpeta .\data junto a dConnector.exe si usas la versión portable (la activa el archivo portable.txt).

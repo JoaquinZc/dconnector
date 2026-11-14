@@ -201,7 +201,7 @@ También puedes ejecutarlo en primer plano, sin servicio: `.\dconnector-server.e
 
 ### Docker
 
-La imagen está publicada en **Docker Hub**: [`jassnoob/dconnector-server`](https://hub.docker.com/r/jassnoob/dconnector-server), para `linux/amd64` y `linux/arm64` (Docker elige la tuya), con las etiquetas `latest` y la de cada versión (por ejemplo `0.3.3`). Es una imagen mínima `distroless` (sin shell), con usuario sin privilegios `65532`, volumen `/data` y `HEALTHCHECK` incluido. También puedes construirla desde el código con el [`deploy/Dockerfile`](deploy/Dockerfile).
+La imagen está publicada en **Docker Hub**: [`jassnoob/dconnector-server`](https://hub.docker.com/r/jassnoob/dconnector-server), para `linux/amd64` y `linux/arm64` (Docker elige la tuya), con las etiquetas `latest` y la de cada versión (por ejemplo `0.3.4`). Es una imagen mínima `distroless` (sin shell), con usuario sin privilegios `65532`, volumen `/data` y `HEALTHCHECK` incluido. También puedes construirla desde el código con el [`deploy/Dockerfile`](deploy/Dockerfile).
 
 ```sh
 docker run -d --name dconnector --restart unless-stopped \
@@ -215,14 +215,14 @@ docker run -d --name dconnector --restart unless-stopped \
 Para construirla tú:
 
 ```sh
-docker build -f deploy/Dockerfile --build-arg VERSION=0.3.3 -t dconnector-server:0.3.3 .
+docker build -f deploy/Dockerfile --build-arg VERSION=0.3.4 -t dconnector-server:0.3.4 .
 
 docker run -d --name dconnector --restart unless-stopped \
   -p 8443:8443 \
   -v dconnector-data:/data \
   -e DCONNECTOR_ADMIN_PASSWORD='una-clave-larga-y-unica' \
   -e TZ=America/Guayaquil \
-  dconnector-server:0.3.3
+  dconnector-server:0.3.4
 
 docker logs dconnector            # huella TLS y, si no pusiste clave, la clave generada
 ```
@@ -509,7 +509,7 @@ Los nombres de los artefactos de `dist\` son los de la [tabla de descargas](#des
 
 ```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -buildvcs=false \
-  -ldflags "-s -w -X dconnector/internal/buildinfo.Version=0.3.3" \
+  -ldflags "-s -w -X dconnector/internal/buildinfo.Version=0.3.4" \
   -o dconnector-server ./cmd/dconnector-server
 ```
 
@@ -592,6 +592,7 @@ WhatsApp, Telegram, Messenger e Instagram son marcas de sus respectivos dueños 
 | [`docs/14-API-SERVIDOR.md`](docs/14-API-SERVIDOR.md) | API del servidor (v1) |
 | [`docs/PROTOCOLO-v1.md`](docs/PROTOCOLO-v1.md) | Protocolo para servidores externos |
 | [`docs/PLAN-SERVIDOR.md`](docs/PLAN-SERVIDOR.md) | Plan y estado de la versión 0.3.0 |
+| [`docs/RELEASE-NOTES-v0.3.4.md`](docs/RELEASE-NOTES-v0.3.4.md) | Notas de la versión 0.3.4 |
 | [`docs/RELEASE-NOTES-v0.3.3.md`](docs/RELEASE-NOTES-v0.3.3.md) | Notas de la versión 0.3.3 |
 | [`docs/RELEASE-NOTES-v0.3.2.md`](docs/RELEASE-NOTES-v0.3.2.md) | Notas de la versión 0.3.2 |
 | [`docs/RELEASE-NOTES-v0.3.1.md`](docs/RELEASE-NOTES-v0.3.1.md) | Notas de la versión 0.3.1 |

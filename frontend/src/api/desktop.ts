@@ -137,7 +137,7 @@ export const browserDesktop: DesktopApi = {
 /** Implementación sobre `DesktopService` (la escribe el agente E en el paquete Go `ui/wails`). */
 export const wailsDesktop: DesktopApi = {
   connectionInfo: () => callWails<ConnectionInfo>("Desktop", "ConnectionInfo"),
-  saveRemote: (r) => callWails<void>("Desktop", "SaveRemote", [r]),
+  saveRemote: (r) => callWails<void>("Desktop", "SaveRemote", [r.url, r.user, r.password]),
   useLocal: () => callWails<void>("Desktop", "UseLocal"),
   keepRunningInBackground: () => callWails<boolean>("Desktop", "KeepRunningInBackground"),
   setKeepRunningInBackground: (on) => callWails<void>("Desktop", "SetKeepRunningInBackground", [on]),

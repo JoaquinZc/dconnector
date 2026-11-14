@@ -1,5 +1,5 @@
 # dconnector-server: imagen mínima y sin privilegios. Se construye desde la RAÍZ del repositorio:
-#   docker build -f deploy/Dockerfile --build-arg VERSION=0.3.3 -t dconnector-server .
+#   docker build -f deploy/Dockerfile --build-arg VERSION=0.3.4 -t dconnector-server .
 ARG GO_VERSION=1.27.4
 
 # Se compila en la plataforma del constructor y se cruza al destino (sin emulador): CGO está desactivado.
